@@ -81,6 +81,7 @@ The Maven Wrapper is included, so a separate Maven installation is not required.
 | `JWT_SECRET` | Yes | None | Base64-encoded secret used to sign JWTs |
 | `JWT_EXPIRATION_MS` | No | `900000` | Token lifetime in milliseconds |
 | `SERVER_PORT` | No | `8080` | Internal application port |
+| `FLYWAY_DATABASE_URL` | QA/Prod | None | PostgreSQL JDBC URL |
 | `SPRING_DATASOURCE_URL` | QA/Prod | Local uses `jdbc:postgresql://localhost:5432/bluememo_db` | PostgreSQL JDBC URL |
 | `SPRING_DATASOURCE_USERNAME` | QA/Prod | Local uses `app_user` | PostgreSQL username |
 | `SPRING_DATASOURCE_PASSWORD` | QA/Prod | Local uses `user` | PostgreSQL password |
