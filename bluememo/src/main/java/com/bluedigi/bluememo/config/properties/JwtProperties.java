@@ -1,4 +1,4 @@
-package com.bluedigi.bluememo.config;
+package com.bluedigi.bluememo.config.properties;
 
 import org.springframework.boot.context.properties.ConfigurationProperties;
 

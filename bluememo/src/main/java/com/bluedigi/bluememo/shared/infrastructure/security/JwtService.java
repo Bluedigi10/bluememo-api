@@ -7,7 +7,7 @@ import javax.crypto.SecretKey;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Service;
 
-import com.bluedigi.bluememo.config.JwtProperties;
+import com.bluedigi.bluememo.config.properties.JwtProperties;
 import com.bluedigi.bluememo.identity.domain.model.User;
 
 import io.jsonwebtoken.Claims;
