@@ -59,7 +59,7 @@ public class TodoRepositoryAdapter implements TodoRepository{
         try {
             updated = todoJpaRepository.saveAndFlush(existing); 
         } catch (DataIntegrityViolationException e) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "Todo title already exist");
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Unexpected error occurred while updating the todo");
         }
         
         return todoMapper.todoEntityToTodo(updated);

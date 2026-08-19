@@ -480,7 +480,7 @@ public class TodoServiceTest {
 
         ResponseStatusException exception = assertThrows(
                 ResponseStatusException.class,
-                () -> todoService.updateStatus(userId.toString(), todoId.toString(), "COMPLETED")
+                () -> todoService.updateStatus(userId.toString(), todoId.toString(), "DONE")
         );
 
         assertStatusException(exception, HttpStatus.NOT_FOUND, "User not found");
@@ -497,7 +497,7 @@ public class TodoServiceTest {
 
         ResponseStatusException exception = assertThrows(
                 ResponseStatusException.class,
-                () -> todoService.updateStatus(userId.toString(), todoId.toString(), "COMPLETED")
+                () -> todoService.updateStatus(userId.toString(), todoId.toString(), "DONE")
         );
 
         assertStatusException(exception, HttpStatus.NOT_FOUND, "Todo not found");
@@ -514,7 +514,7 @@ public class TodoServiceTest {
 
         ResponseStatusException exception = assertThrows(
                 ResponseStatusException.class,
-                () -> todoService.updateStatus(userId.toString(), todoId.toString(), "COMPLETED")
+                () -> todoService.updateStatus(userId.toString(), todoId.toString(), "DONE")
         );
 
         assertStatusException(exception, HttpStatus.NOT_FOUND, "Todo not found");

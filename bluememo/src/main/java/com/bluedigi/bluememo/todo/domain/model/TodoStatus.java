@@ -6,7 +6,7 @@ import org.springframework.web.server.ResponseStatusException;
 public enum TodoStatus {
     PENDING,
     IN_PROGRESS,
-    COMPLETED;
+    DONE;
 
     public static TodoStatus fromValue(String value) {
         if (value == null){
@@ -18,7 +18,7 @@ public enum TodoStatus {
         return switch (value.toUpperCase()) {
             case "IN PROGRESS", "IN_PROGRESS" -> IN_PROGRESS;
             case "PENDING" -> PENDING;
-            case "COMPLETED" -> COMPLETED;
+            case "DONE", "COMPLETED" -> DONE;
             default -> throw new ResponseStatusException(
                 HttpStatus.BAD_REQUEST,
                 "Invalid status: " + value
