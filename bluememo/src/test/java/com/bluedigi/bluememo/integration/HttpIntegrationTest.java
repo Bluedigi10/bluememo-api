@@ -125,9 +125,9 @@ class HttpIntegrationTest {
 
         mockMvc.perform(patch("/todos/{todoId}", todoId)
                         .header("Authorization", bearer(token))
-                        .param("status", "COMPLETED"))
+                        .param("status", "DONE"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.status").value("COMPLETED"));
+                .andExpect(jsonPath("$.status").value("DONE"));
 
         mockMvc.perform(delete("/todos/{todoId}", todoId)
                         .header("Authorization", bearer(token)))
