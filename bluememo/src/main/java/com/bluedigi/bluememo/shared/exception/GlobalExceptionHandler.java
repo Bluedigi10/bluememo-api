@@ -23,8 +23,20 @@ public class GlobalExceptionHandler {
             HttpServletRequest request
     ) {
         return buildResponse(
-                exception.getMessage(),
+                "An unexpected error occurred while processing the request",
                 HttpStatus.INTERNAL_SERVER_ERROR,
+                request.getRequestURI()
+        );
+    }
+
+    @ExceptionHandler(BluememoException.class)
+    public ResponseEntity<ErrorResponse> handleBluememoException(
+            BluememoException exception,
+            HttpServletRequest request
+    ) {
+        return buildResponse(
+                exception.getMessage(),
+                exception.getStatusCode(),
                 request.getRequestURI()
         );
     }
@@ -39,7 +51,11 @@ public class GlobalExceptionHandler {
             .findFirst()
             .orElse("Validation error");
 
-        return buildResponse(errorMessage, HttpStatus.BAD_REQUEST, request.getRequestURI());
+        return buildResponse(
+                errorMessage,
+                HttpStatus.BAD_REQUEST,
+                request.getRequestURI()
+        );
     }
 
     @ExceptionHandler(IllegalArgumentException.class)

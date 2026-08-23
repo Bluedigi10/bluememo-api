@@ -13,13 +13,17 @@ public class TelegramUpdateMapper {
     public IncomingMessage mapToIncomingMessage(TelegramUpdateRequest request){
         return new IncomingMessage(
                 ChannelType.TELEGRAM,
-                request.message().messageId(),
-                request.message().chat().id(),
-                request.message().from().id(),
-                request.message().text(),
+                String.valueOf(request.updateId()),
+                String.valueOf(request.message().chat().id()),
+                String.valueOf(request.message().messageId()),
+                String.valueOf(request.message().from().id()),
+                validateMessageTextNull(request),
                 toDate(request.message().date()),
                 request.message().from().username()
         );
+    }
+    private String validateMessageTextNull(TelegramUpdateRequest request){
+        return request.message().text() == null ? null : request.message().text();
     }
 
     private Instant toDate(Long date){

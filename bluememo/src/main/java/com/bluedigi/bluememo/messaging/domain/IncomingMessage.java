@@ -4,9 +4,10 @@ import java.time.Instant;
 
 public record IncomingMessage(
     ChannelType channelType,
-    Long externalMessageId,
-    Long conversationId,
-    Long senderId,
+    String externalMessageId,
+    String conversationId,
+    String messageId,
+    String senderId,
     String text,
     Instant sentDate,
     String username
