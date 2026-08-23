@@ -2,6 +2,7 @@ package com.bluedigi.bluememo.shared.exception;
 
 import java.time.LocalDateTime;
 
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.AccessDeniedException;
@@ -14,6 +15,7 @@ import org.springframework.web.server.ResponseStatusException;
 
 import jakarta.servlet.http.HttpServletRequest;
 
+@Slf4j
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
@@ -22,6 +24,11 @@ public class GlobalExceptionHandler {
             Exception exception,
             HttpServletRequest request
     ) {
+        log.error(
+                "Unexpected error processing request: {}",
+                request.getRequestURI(),
+                exception
+        );
         return buildResponse(
                 "An unexpected error occurred while processing the request",
                 HttpStatus.INTERNAL_SERVER_ERROR,
@@ -36,7 +43,7 @@ public class GlobalExceptionHandler {
     ) {
         return buildResponse(
                 exception.getMessage(),
-                exception.getStatusCode(),
+                HttpStatus.valueOf(exception.getStatusCode()),
                 request.getRequestURI()
         );
     }

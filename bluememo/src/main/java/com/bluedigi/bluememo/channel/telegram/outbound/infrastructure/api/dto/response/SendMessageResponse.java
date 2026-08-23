@@ -8,7 +8,7 @@ public record SendMessageResponse(
         @JsonProperty("message_id")
         Integer messageId,
 
-        Integer date,
+        Long date,
 
         TelegramChatResponse chat,
 

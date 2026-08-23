@@ -23,6 +23,9 @@ public class TelegramUpdateMapper {
         );
     }
     private String validateMessageTextNull(TelegramUpdateRequest request){
+        if(request.message() == null){
+            return null;
+        }
         return request.message().text() == null ? null : request.message().text();
     }
 

@@ -1,11 +1,11 @@
 package com.bluedigi.bluememo.messaging.application.service;
 
 import com.bluedigi.bluememo.messaging.application.exception.MessageChannelNotConfiguredException;
+import com.bluedigi.bluememo.shared.exception.StatusCodeError;
 import com.bluedigi.bluememo.messaging.application.port.out.ChannelMessageSender;
 import com.bluedigi.bluememo.messaging.application.port.out.SendMessagePort;
 import com.bluedigi.bluememo.messaging.domain.ChannelType;
 import com.bluedigi.bluememo.messaging.domain.OutgoingMessage;
-import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
@@ -34,7 +34,7 @@ public class SendMessageRouter implements SendMessagePort {
         if (sender == null) {
             throw new MessageChannelNotConfiguredException(
                     message.channelType(),
-                    HttpStatus.INTERNAL_SERVER_ERROR);
+                    StatusCodeError.INTERNAL_SERVER_ERROR.getStatusCode());
         }
 
         sender.send(message);

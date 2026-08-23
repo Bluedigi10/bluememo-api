@@ -1,8 +1,7 @@
 package com.bluedigi.bluememo.channel.telegram.outbound.infrastructure.api.dto;
 
 public enum TelegramApiPaths {
-    SEND_MESSAGE("/sendMessage"),
-    BOT("/bot");
+    SEND_MESSAGE("/sendMessage");
 
     private final String path;
 
