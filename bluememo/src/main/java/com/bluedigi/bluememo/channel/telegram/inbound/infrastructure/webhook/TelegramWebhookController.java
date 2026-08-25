@@ -1,15 +1,13 @@
 package com.bluedigi.bluememo.channel.telegram.inbound.infrastructure.webhook;
 
 import com.bluedigi.bluememo.channel.telegram.config.TelegramProperties;
-import com.bluedigi.bluememo.channel.telegram.inbound.infrastructure.webhook.mapper.TelegramUpdateMapper;
-import com.bluedigi.bluememo.messaging.domain.IncomingMessage;
+import com.bluedigi.bluememo.channel.telegram.outbound.infrastructure.api.dto.TelegramHeader;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.bluedigi.bluememo.channel.telegram.inbound.infrastructure.webhook.request.TelegramUpdateRequest;
-import com.bluedigi.bluememo.messaging.application.port.in.ProcessIncomingMessageUseCase;
 
 import lombok.RequiredArgsConstructor;
 
@@ -25,21 +23,19 @@ import java.util.Objects;
 @RequiredArgsConstructor
 public class TelegramWebhookController {
 
-    private final ProcessIncomingMessageUseCase processIncomingMessageUseCase;
-    private final TelegramUpdateMapper telegramUpdateMapper;
     private final TelegramProperties properties;
+    private final TelegramUpdateProcess telegramUpdateProcess;
     
     @PostMapping
     public ResponseEntity<Void> receiveWebhook(
-            @RequestHeader(value = "X-Telegram-Bot-Api-Secret-Token", required = false) String receivedSecret,
-            @RequestBody TelegramUpdateRequest entity
+            @RequestHeader(value = TelegramHeader.TELEGRAM_HEADER, required = false) String receivedSecret,
+            @RequestBody TelegramUpdateRequest request
     ) {
         if (!Objects.equals(properties.webhookSecret(), receivedSecret)) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
 
-        IncomingMessage message = telegramUpdateMapper.mapToIncomingMessage(entity);
-        processIncomingMessageUseCase.process(message);
+        telegramUpdateProcess.process(request);
 
         return ResponseEntity.ok().build();
     }

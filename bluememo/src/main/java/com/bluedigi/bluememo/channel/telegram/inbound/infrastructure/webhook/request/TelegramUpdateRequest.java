@@ -2,6 +2,8 @@ package com.bluedigi.bluememo.channel.telegram.inbound.infrastructure.webhook.re
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import lombok.AllArgsConstructor;
+import lombok.NoArgsConstructor;
 
 @JsonIgnoreProperties(ignoreUnknown = true)
 public record TelegramUpdateRequest(

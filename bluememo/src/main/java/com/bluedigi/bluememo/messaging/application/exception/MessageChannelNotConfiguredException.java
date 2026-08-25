@@ -7,6 +7,6 @@ import org.springframework.http.HttpStatus;
 public class MessageChannelNotConfiguredException extends BluememoException {
 
     public MessageChannelNotConfiguredException(ChannelType channel, Integer statusCode) {
-        super("Channel " + channel + " is not supported", statusCode);
+        super("Channel: " + channel + " is not supported", statusCode);
     }
 }

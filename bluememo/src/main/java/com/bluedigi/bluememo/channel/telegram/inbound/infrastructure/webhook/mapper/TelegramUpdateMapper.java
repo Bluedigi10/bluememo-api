@@ -17,16 +17,10 @@ public class TelegramUpdateMapper {
                 String.valueOf(request.message().chat().id()),
                 String.valueOf(request.message().messageId()),
                 String.valueOf(request.message().from().id()),
-                validateMessageTextNull(request),
+                request.message().text() == null ? null : request.message().text(),
                 toDate(request.message().date()),
                 request.message().from().username()
         );
-    }
-    private String validateMessageTextNull(TelegramUpdateRequest request){
-        if(request.message() == null){
-            return null;
-        }
-        return request.message().text() == null ? null : request.message().text();
     }
 
     private Instant toDate(Long date){
