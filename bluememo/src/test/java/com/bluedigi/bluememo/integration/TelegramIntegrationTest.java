@@ -87,6 +87,8 @@ public class TelegramIntegrationTest {
         assertThat(request).isNotNull();
         assertThat(request.getMethod()).isEqualTo("POST");
         assertThat(request.getUrl().encodedPath()).isEqualTo("/bot" + TELEGRAM_BOT_TOKEN + "/sendMessage");
+        assertThat(request.getBody()).isNotNull();
+        assertThat(request.getBody().utf8()).contains("Recibí " + TEXT_MESSAGE);
     }
 
     @Test
@@ -100,13 +102,6 @@ public class TelegramIntegrationTest {
 
     @Test
     void messageNullFlow()  throws Exception {
-        server.enqueue(
-                new MockResponse.Builder()
-                        .code(200)
-                        .addHeader("Content-Type", "application/json")
-                        .body(successMessageSendBody(TEXT_MESSAGE))
-                        .build()
-        );
         mockMvc.perform(post("/webhooks/telegram")
                         .header(TelegramHeader.TELEGRAM_HEADER, TELEGRAM_WH_SECRET)
                         .contentType(MediaType.APPLICATION_JSON)
@@ -288,9 +283,38 @@ public class TelegramIntegrationTest {
         assertThat(request.getUrl().encodedPath()).isEqualTo("/bot" + TELEGRAM_BOT_TOKEN + "/sendMessage");
     }
 
+    @Test
+    void shouldIgnoreMessageWithoutChat() throws Exception {
+        mockMvc.perform(post("/webhooks/telegram")
+                        .header(
+                                TelegramHeader.TELEGRAM_HEADER,
+                                TELEGRAM_WH_SECRET
+                        )
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(updateWithoutChatBody()))
+                .andExpect(status().isOk());
 
+        RecordedRequest outboundRequest =
+                server.takeRequest(200, TimeUnit.MILLISECONDS);
 
+        assertThat(outboundRequest).isNull();
+    }
 
+    private String updateWithoutChatBody() {
+        return """
+            {
+              "update_id": 10000,
+              "message": {
+                "message_id": 123,
+                "date": 1234,
+                "text": "Hola",
+                "from": {
+                  "id": 124
+                }
+              }
+            }
+            """;
+    }
 
     private String updateBody(String text){
         return """

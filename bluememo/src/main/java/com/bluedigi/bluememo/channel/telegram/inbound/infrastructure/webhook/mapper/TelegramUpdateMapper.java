@@ -13,11 +13,11 @@ public class TelegramUpdateMapper {
     public IncomingMessage mapToIncomingMessage(TelegramUpdateRequest request){
         return new IncomingMessage(
                 ChannelType.TELEGRAM,
-                String.valueOf(request.updateId()),
-                String.valueOf(request.message().chat().id()),
-                String.valueOf(request.message().messageId()),
-                String.valueOf(request.message().from().id()),
-                request.message().text() == null ? null : request.message().text(),
+                request.updateId().toString(),
+                request.message().chat().id().toString(),
+                request.message().messageId().toString(),
+                request.message().from().id().toString(),
+                request.message().text(),
                 toDate(request.message().date()),
                 request.message().from().username()
         );

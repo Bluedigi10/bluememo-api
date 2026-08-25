@@ -18,7 +18,24 @@ public class TelegramUpdateProcess {
             return;
         }
 
+        if (!hasRequiredFields(request)) {
+            return;
+        }
+
         IncomingMessage message = telegramUpdateMapper.mapToIncomingMessage(request);
         processIncomingMessageUseCase.process(message);
+    }
+
+    private boolean hasRequiredFields(TelegramUpdateRequest update) {
+        TelegramUpdateRequest.TelegramMessageRequest message =
+                update.message();
+
+        return update.updateId() != null
+                && message.messageId() != null
+                && message.date() != null
+                && message.chat() != null
+                && message.chat().id() != null
+                && message.from() != null
+                && message.from().id() != null;
     }
 }
