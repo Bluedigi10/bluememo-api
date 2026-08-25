@@ -36,7 +36,7 @@ public class TelegramIntegrationTest {
     private static final String C_MUSIC = "/music";
     @Autowired
     private MockMvc mockMvc;
-    @Autowired
+
     private static final MockWebServer server = new MockWebServer();
 
     static {
@@ -300,6 +300,108 @@ public class TelegramIntegrationTest {
         assertThat(outboundRequest).isNull();
     }
 
+    @Test
+    void shouldIgnoreMessageWithoutFrom() throws Exception {
+        mockMvc.perform(post("/webhooks/telegram")
+                        .header(
+                                TelegramHeader.TELEGRAM_HEADER,
+                                TELEGRAM_WH_SECRET
+                        )
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(updateWithoutFromBody()))
+                .andExpect(status().isOk());
+
+        RecordedRequest outboundRequest =
+                server.takeRequest(200, TimeUnit.MILLISECONDS);
+
+        assertThat(outboundRequest).isNull();
+    }
+
+    @Test
+    void shouldIgnoreMessageWithoutDate() throws Exception {
+        mockMvc.perform(post("/webhooks/telegram")
+                        .header(
+                                TelegramHeader.TELEGRAM_HEADER,
+                                TELEGRAM_WH_SECRET
+                        )
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(updateWithoutDateBody()))
+                .andExpect(status().isOk());
+
+        RecordedRequest outboundRequest =
+                server.takeRequest(200, TimeUnit.MILLISECONDS);
+
+        assertThat(outboundRequest).isNull();
+    }
+
+    @Test
+    void shouldIgnoreMessageWithoutMessageId() throws Exception {
+        mockMvc.perform(post("/webhooks/telegram")
+                        .header(
+                                TelegramHeader.TELEGRAM_HEADER,
+                                TELEGRAM_WH_SECRET
+                        )
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(updateWithoutMessageIdBody()))
+                .andExpect(status().isOk());
+
+        RecordedRequest outboundRequest =
+                server.takeRequest(200, TimeUnit.MILLISECONDS);
+
+        assertThat(outboundRequest).isNull();
+    }
+
+    @Test
+    void shouldIgnoreMessageWithoutUpdateId() throws Exception {
+        mockMvc.perform(post("/webhooks/telegram")
+                        .header(
+                                TelegramHeader.TELEGRAM_HEADER,
+                                TELEGRAM_WH_SECRET
+                        )
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(updateWithoutUpdateIdBody()))
+                .andExpect(status().isOk());
+
+        RecordedRequest outboundRequest =
+                server.takeRequest(200, TimeUnit.MILLISECONDS);
+
+        assertThat(outboundRequest).isNull();
+    }
+
+    @Test
+    void shouldIgnoreMessageWithoutChatId() throws Exception {
+        mockMvc.perform(post("/webhooks/telegram")
+                        .header(
+                                TelegramHeader.TELEGRAM_HEADER,
+                                TELEGRAM_WH_SECRET
+                        )
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(updateChatIdNullBody()))
+                .andExpect(status().isOk());
+
+        RecordedRequest outboundRequest =
+                server.takeRequest(200, TimeUnit.MILLISECONDS);
+
+        assertThat(outboundRequest).isNull();
+    }
+
+    @Test
+    void shouldIgnoreMessageWithoutFromId() throws Exception {
+        mockMvc.perform(post("/webhooks/telegram")
+                        .header(
+                                TelegramHeader.TELEGRAM_HEADER,
+                                TELEGRAM_WH_SECRET
+                        )
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(updateFromIdNullBody()))
+                .andExpect(status().isOk());
+
+        RecordedRequest outboundRequest =
+                server.takeRequest(200, TimeUnit.MILLISECONDS);
+
+        assertThat(outboundRequest).isNull();
+    }
+
     private String updateWithoutChatBody() {
         return """
             {
@@ -314,6 +416,132 @@ public class TelegramIntegrationTest {
               }
             }
             """;
+    }
+
+    private String updateWithoutFromBody() {
+        return """
+            {
+              "update_id": 10000,
+              "message": {
+                "message_id": 123,
+                "date": 1234,
+                "text": "Hola",
+                 "chat":{
+                     "id":1235,
+                     "type":"private"
+                 }
+              }
+            }
+            """;
+    }
+
+    private String updateWithoutDateBody(){
+        return """
+                {
+                    "update_id": 10000,
+                    "message": {
+                        "message_id": 123,
+                        "text":"%s",
+                        "from":{
+                            "id":124,
+                            "is_bot": true,
+                            "first_name": "Emma",
+                            "username":"emmatest"
+                        },
+                        "chat":{
+                            "id":1235,
+                            "type":"private"
+                        }
+                    }
+                }
+                """;
+    }
+    private String updateWithoutMessageIdBody(){
+        return """
+                {
+                    "update_id": 10000,
+                    "message": {
+                        "date": 1234,
+                        "text":"%s",
+                        "from":{
+                            "id":124,
+                            "is_bot": true,
+                            "first_name": "Emma",
+                            "username":"emmatest"
+                        },
+                        "chat":{
+                            "id":1235,
+                            "type":"private"
+                        }
+                    }
+                }
+                """;
+    }
+
+    private String updateWithoutUpdateIdBody(){
+        return """
+                {
+                    "message": {
+                        "message_id": 123,
+                        "date": 1234,
+                        "text":"%s",
+                        "from":{
+                            "id":124,
+                            "is_bot": true,
+                            "first_name": "Emma",
+                            "username":"emmatest"
+                        },
+                        "chat":{
+                            "id":1235,
+                            "type":"private"
+                        }
+                    }
+                }
+                """;
+    }
+
+    private String updateChatIdNullBody(){
+        return """
+                {
+                    "update_id": 10000,
+                    "message": {
+                        "message_id": 123,
+                        "date": 1234,
+                        "text":"%s",
+                        "from":{
+                            "id":124,
+                            "is_bot": true,
+                            "first_name": "Emma",
+                            "username":"emmatest"
+                        },
+                        "chat":{
+                            "type":"private"
+                        }
+                    }
+                }
+                """;
+    }
+
+    private String updateFromIdNullBody(){
+        return """
+                {
+                    "update_id": 10000,
+                    "message": {
+                        "message_id": 123,
+                        "date": 1234,
+                        "text":"%s",
+                        "from":{
+                            "is_bot": true,
+                            "first_name": "Emma",
+                            "username":"emmatest"
+                        },
+                        "chat":{
+                            "id":1235,
+                            "type":"private"
+                        }
+                    }
+                }
+                """;
     }
 
     private String updateBody(String text){

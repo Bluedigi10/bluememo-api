@@ -5,8 +5,10 @@ import com.bluedigi.bluememo.channel.telegram.inbound.infrastructure.webhook.req
 import com.bluedigi.bluememo.messaging.application.port.in.ProcessIncomingMessageUseCase;
 import com.bluedigi.bluememo.messaging.domain.IncomingMessage;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class TelegramUpdateProcess {
@@ -15,10 +17,12 @@ public class TelegramUpdateProcess {
 
     public void process(TelegramUpdateRequest request) {
         if (request.message() == null) {
+            log.debug("TelegramUpdateProcess::process: message is null");
             return;
         }
 
         if (!hasRequiredFields(request)) {
+            log.debug("TelegramUpdateProcess::process: message fields are required");
             return;
         }
 
