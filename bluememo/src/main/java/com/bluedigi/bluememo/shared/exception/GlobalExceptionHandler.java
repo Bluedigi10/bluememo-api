@@ -2,6 +2,7 @@ package com.bluedigi.bluememo.shared.exception;
 
 import java.time.LocalDateTime;
 
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.AccessDeniedException;
@@ -14,6 +15,7 @@ import org.springframework.web.server.ResponseStatusException;
 
 import jakarta.servlet.http.HttpServletRequest;
 
+@Slf4j
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
@@ -22,9 +24,26 @@ public class GlobalExceptionHandler {
             Exception exception,
             HttpServletRequest request
     ) {
+        log.error(
+                "Unexpected error processing request: {}",
+                request.getRequestURI(),
+                exception
+        );
+        return buildResponse(
+                "An unexpected error occurred while processing the request",
+                HttpStatus.INTERNAL_SERVER_ERROR,
+                request.getRequestURI()
+        );
+    }
+
+    @ExceptionHandler(BluememoException.class)
+    public ResponseEntity<ErrorResponse> handleBluememoException(
+            BluememoException exception,
+            HttpServletRequest request
+    ) {
         return buildResponse(
                 exception.getMessage(),
-                HttpStatus.INTERNAL_SERVER_ERROR,
+                HttpStatus.valueOf(exception.getStatusCode()),
                 request.getRequestURI()
         );
     }
@@ -39,7 +58,11 @@ public class GlobalExceptionHandler {
             .findFirst()
             .orElse("Validation error");
 
-        return buildResponse(errorMessage, HttpStatus.BAD_REQUEST, request.getRequestURI());
+        return buildResponse(
+                errorMessage,
+                HttpStatus.BAD_REQUEST,
+                request.getRequestURI()
+        );
     }
 
     @ExceptionHandler(IllegalArgumentException.class)

@@ -2,8 +2,10 @@ package com.bluedigi.bluememo.config;
 
 import java.util.List;
 
+import org.springframework.boot.web.servlet.FilterRegistrationBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
@@ -30,6 +32,19 @@ public class SecurityConfig {
             this.jwtAuthenticationFilter = jwtAuthenticationFilter;
             this.securityErrorHandler = securityErrorHandler;
             this.corsProperties = corsProperties;
+        }
+
+        @Bean
+        public FilterRegistrationBean<JwtAuthenticationFilter>
+        jwtAuthenticationFilterRegistration(
+                JwtAuthenticationFilter filter
+        ) {
+            FilterRegistrationBean<JwtAuthenticationFilter> registration =
+                    new FilterRegistrationBean<>(filter);
+
+            registration.setEnabled(false);
+
+            return registration;
         }
 
         @Bean
@@ -72,6 +87,9 @@ public class SecurityConfig {
                                     "/swagger-ui/**",
                                     "/swagger-ui.html",
                                     "/actuator/health"
+                            ).permitAll()
+                            .requestMatchers(
+                                    HttpMethod.POST, "/webhooks/telegram"
                             ).permitAll()
                             .anyRequest().authenticated()
                     )

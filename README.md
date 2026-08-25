@@ -1,59 +1,150 @@
 # BlueMemo API
 
-BlueMemo is a REST API for managing personal tasks. It includes user registration and login, JWT authentication, profile management, and a per-user task CRUD.
+BlueMemo is the backend for a personal conversational assistant. The current implementation provides identity and task management together with the first messaging-channel delivery, **BM-01: Telegram inbound and outbound messaging**.
 
-## Features
+BM-01 receives Telegram updates through a protected webhook, converts supported messages into a channel-independent model, processes them, routes the response to the correct channel, and sends the reply through the Telegram Bot API.
+
+## Current Scope
+
+### Core API
 
 - User registration and login
-- Password hashing with BCrypt
+- BCrypt password hashing
 - Stateless JWT authentication
-- Profile retrieval, partial updates, and deletion
-- Task creation, retrieval, updating, filtering, sorting, and deletion
-- Task isolation by authenticated user
-- Pagination and status filtering
-- Validation and centralized error handling
-- Database migrations with Flyway
-- OpenAPI documentation with Swagger UI
-- Health checks with Spring Boot Actuator
-- Unit and HTTP integration tests with MockMvc
-- Code coverage reports with JaCoCo
-- Continuous integration with GitHub Actions
-- Containers for the API and PostgreSQL
+- Profile retrieval, partial update, and deletion
+- Per-user task CRUD
+- Pagination, filtering, and sorting
+- Centralized error handling
+- PostgreSQL persistence and Flyway migrations
+
+### BM-01 — Telegram
+
+- Public `POST /webhooks/telegram` endpoint
+- Webhook authentication through `X-Telegram-Bot-Api-Secret-Token`
+- Telegram update deserialization and validation
+- Mapping to channel-independent `IncomingMessage` and `OutgoingMessage` models
+- Message-channel routing through `SendMessageRouter`
+- Telegram Bot API integration through `RestClient`
+- Five-second connection timeout and ten-second read timeout
+- Text and basic command processing
+- Safe acknowledgement of unsupported or incomplete updates
+- Integration tests with MockMvc and MockWebServer
+- Router tests for Telegram, WhatsApp, and unconfigured channels
+
+WhatsApp is represented as a channel type to validate the routing abstraction, but it does not have an adapter yet.
+
+## Architecture
+
+The messaging flow separates Telegram-specific infrastructure from the shared application flow:
+
+```mermaid
+flowchart TD
+    Telegram["Telegram Bot API"] --> Controller["TelegramWebhookController"]
+    Controller --> UpdateProcess["TelegramUpdateProcess"]
+    UpdateProcess --> Mapper["TelegramUpdateMapper"]
+    Mapper --> UseCase["ProcessIncomingMessageUseCase"]
+    UseCase --> Router["SendMessageRouter"]
+    Router --> Sender["TelegramMessageSender"]
+    Sender --> Client["TelegramApiClient"]
+    Client --> Telegram
+```
+
+Responsibilities:
+
+| Component | Responsibility |
+| --- | --- |
+| `TelegramWebhookController` | Validates the webhook secret and acknowledges the request |
+| `TelegramUpdateProcess` | Rejects unsupported or incomplete updates before mapping |
+| `TelegramUpdateMapper` | Converts a valid Telegram message into `IncomingMessage` |
+| `ProcessIncomingMessageService` | Applies the current message and command behavior |
+| `SendMessageRouter` | Selects a `ChannelMessageSender` by `ChannelType` |
+| `TelegramMessageSender` | Maps the generic response and validates the Telegram API result |
+| `TelegramApiClient` | Executes `POST /sendMessage` through a configured `RestClient` |
+
+## Telegram Behavior
+
+### Supported input
+
+BM-01 processes new Telegram updates containing a valid `message` with:
+
+- `update_id`
+- `message.message_id`
+- `message.date`
+- `message.chat.id`
+- `message.from.id`
+
+`message.text` is optional. A message without text receives the current fallback response:
+
+```text
+De momento solo proceso texto
+```
+
+Current commands:
+
+| Input | Response |
+| --- | --- |
+| `/start` | `Bienvenido, soy un bot` |
+| `/help` | `Estos son los comandos disponibles...` |
+| Unknown command | `Comando no reconocido` |
+| Regular text | `Recibí <text>` |
+
+### Ignored updates
+
+The webhook returns `200 OK` without calling Telegram when:
+
+- The update does not contain `message`
+- `update_id` is missing
+- `message_id` or `date` is missing
+- `chat`, `chat.id`, `from`, or `from.id` is missing
+
+Returning `200` acknowledges updates that BlueMemo intentionally does not process and prevents unnecessary Telegram retries.
+
+### Error behavior
+
+| Situation | Result |
+| --- | --- |
+| Missing or incorrect webhook secret | `401 Unauthorized` |
+| Unsupported or incomplete update | `200 OK`, no outbound request |
+| Telegram API error or invalid response | `500 Internal Server Error` |
 
 ## Tech Stack
 
 - Java 17
 - Spring Boot 4.1.0
-- Spring Web MVC
+- Spring Web MVC and `RestClient`
 - Spring Security
 - Spring Data JPA / Hibernate
+- PostgreSQL 17 and H2 for tests
 - Flyway
-- PostgreSQL 17
 - JJWT 0.13.0
 - Springdoc OpenAPI 3.0.3
 - Maven Wrapper
-- JUnit, Mockito, MockMvc, H2, and JaCoCo
+- JUnit, Mockito, MockMvc, MockWebServer, and JaCoCo
 - Docker and Docker Compose
 
 ## Project Structure
 
 ```text
-bluememo-web/
+bluememo-api/
 ├── .github/workflows/ci.yml
 ├── README.md
 └── bluememo/
     ├── src/main/java/com/bluedigi/bluememo/
-    │   ├── config/                 # Security, JWT filter, and OpenAPI
-    │   ├── identity/               # Authentication and users
-    │   ├── todo/                   # Task management
-    │   └── shared/                 # JWT and error handling
+    │   ├── channel/telegram/
+    │   │   ├── config/                    # Telegram properties and RestClient
+    │   │   ├── inbound/infrastructure/    # Webhook, validation, DTO, and mapper
+    │   │   └── outbound/infrastructure/   # Bot API client and sender
+    │   ├── messaging/
+    │   │   ├── application/               # Use cases, ports, and channel router
+    │   │   └── domain/                    # Generic channel message models
+    │   ├── identity/                      # Authentication and users
+    │   ├── todo/                          # Task management
+    │   ├── config/                        # Security, JWT filter, CORS, and OpenAPI
+    │   └── shared/                        # Shared security and error handling
     ├── src/main/resources/
-    │   ├── db/migration/           # Versioned Flyway migrations
-    │   ├── application.properties
-    │   ├── application-local.properties
-    │   ├── application-qa.properties
-    │   └── application-prod.properties
-    ├── src/test/                   # Unit and HTTP integration tests
+    │   ├── db/migration/                  # Versioned Flyway migrations
+    │   └── application-*.properties       # Environment profiles
+    ├── src/test/                          # Unit and integration tests
     ├── compose.yaml
     ├── Dockerfile
     └── pom.xml
@@ -61,11 +152,14 @@ bluememo-web/
 
 ## Requirements
 
-To run the complete stack with containers:
+For Docker execution:
 
-- Docker Desktop or Docker Engine with Docker Compose
+- Docker Desktop or Docker Engine
+- Docker Compose
+- A Telegram development bot token
+- A webhook secret
 
-To run the API directly:
+For direct execution:
 
 - JDK 17
 - PostgreSQL
@@ -74,29 +168,32 @@ The Maven Wrapper is included, so a separate Maven installation is not required.
 
 ## Environment Variables
 
-### Application
-
 | Variable | Required | Default | Description |
 | --- | --- | --- | --- |
 | `JWT_SECRET` | Yes | None | Base64-encoded secret used to sign JWTs |
-| `JWT_EXPIRATION_MS` | No | `900000` | Token lifetime in milliseconds |
+| `JWT_EXPIRATION_MS` | No | `900000` | JWT lifetime in milliseconds |
+| `TELEGRAM_BOT_TOKEN` | Yes | None | Token issued by BotFather |
+| `TELEGRAM_WEBHOOK_SECRET` | Yes | None | Secret expected in the Telegram webhook header |
 | `SERVER_PORT` | No | `8080` | Internal application port |
-| `FLYWAY_DATABASE_URL` | QA/Prod | None | PostgreSQL JDBC URL |
-| `SPRING_DATASOURCE_URL` | QA/Prod | Local uses `jdbc:postgresql://localhost:5432/bluememo_db` | PostgreSQL JDBC URL |
-| `SPRING_DATASOURCE_USERNAME` | QA/Prod | Local uses `app_user` | PostgreSQL username |
-| `SPRING_DATASOURCE_PASSWORD` | QA/Prod | Local uses `user` | PostgreSQL password |
-| `DB_MAX_POOL_SIZE` | No | `10` | Maximum Hikari pool size in production |
-| `DB_MIN_IDLE` | No | `2` | Minimum idle connections in production |
+| `SPRING_DATASOURCE_URL` | QA/Prod | Local PostgreSQL URL | JDBC datasource URL |
+| `SPRING_DATASOURCE_USERNAME` | QA/Prod | `app_user` locally | Database username |
+| `SPRING_DATASOURCE_PASSWORD` | QA/Prod | `user` locally | Database password |
+| `FLYWAY_DATABASE_URL` | QA/Prod | None | JDBC URL used by Flyway where configured |
+| `FLYWAY_DATABASE_USERNAME` | No | Datasource username | Optional Flyway-specific database username |
+| `FLYWAY_DATABASE_PASSWORD` | No | Datasource password | Optional Flyway-specific database password |
+| `DB_MAX_POOL_SIZE` | No | `10` | Maximum production Hikari pool size |
+| `DB_MIN_IDLE` | No | `2` | Minimum production idle connections |
 
-`JWT_SECRET` must decode to a key of at least 32 bytes. You can generate one with:
+Generate suitable secrets with:
 
 ```bash
 openssl rand -base64 32
+openssl rand -hex 32
 ```
 
-Do not commit real secrets or credentials to Git.
+Use the Base64 value for `JWT_SECRET` and an alphanumeric, underscore, or hyphen value for `TELEGRAM_WEBHOOK_SECRET`. Never commit real tokens or secrets.
 
-### Docker Compose
+### Docker Compose environment
 
 Create `bluememo/.env`:
 
@@ -105,37 +202,22 @@ POSTGRES_DB=bluememo_db
 POSTGRES_USER=app_user
 POSTGRES_PASSWORD=replace_with_a_strong_password
 JWT_SECRET=replace_with_a_base64_encoded_secret
+TELEGRAM_BOT_TOKEN=replace_with_the_development_bot_token
+TELEGRAM_WEBHOOK_SECRET=replace_with_the_webhook_secret
 ```
 
-Docker Compose maps these variables to the configuration required by Spring and automatically activates the `local` profile.
+The `.env` file is ignored by Git.
 
 ## Spring Profiles
 
-| Profile | Database | Migrations | Hibernate | Purpose |
-| --- | --- | --- | --- | --- |
-| `local` | PostgreSQL with local defaults or overrides | Flyway | `validate` | Local development and Docker Compose |
-| `qa` | PostgreSQL configured through environment variables | Flyway | `validate` | Quality assurance |
-| `prod` | PostgreSQL configured through environment variables | Flyway | `validate` | Production |
-| `test` | H2 in PostgreSQL compatibility mode | Flyway | `validate` | Automated tests |
+| Profile | Database | Purpose |
+| --- | --- | --- |
+| `local` | PostgreSQL with local defaults or overrides | Local development and Docker Compose |
+| `qa` | PostgreSQL configured through environment variables | Quality assurance |
+| `prod` | PostgreSQL configured through environment variables | Production |
+| `test` | H2 in PostgreSQL compatibility mode | Automated tests |
 
-No profile is active by default. Select one when starting the application; Docker Compose uses `local`.
-
-Flyway applies pending migrations before Hibernate validates the schema. The initial migration is located at:
-
-```text
-bluememo/src/main/resources/db/migration/V1__create_initial_schema.sql
-```
-
-Do not modify migrations that have already been applied. Add subsequent schema changes as new versions, for example, `V2__add_priority_to_todos.sql`.
-
-If your local volume was created before Flyway was integrated and you do not need to preserve its data, recreate it with:
-
-```bash
-docker compose down -v
-docker compose up --build -d
-```
-
-`down -v` permanently deletes the local PostgreSQL data.
+Flyway applies pending migrations before Hibernate validates the schema. Do not edit migrations that have already been applied; add a new version instead.
 
 ## Running with Docker Compose
 
@@ -156,19 +238,13 @@ Available services:
 Useful commands:
 
 ```bash
-# View API logs
 docker compose logs -f api
-
-# Stop services while preserving the database
 docker compose down
-
-# Stop services and delete local data
-docker compose down -v
 ```
 
-## Running Locally
+`docker compose down -v` also removes the PostgreSQL volume and permanently deletes its local data.
 
-Start PostgreSQL and create the database. Then configure the JWT secret and, if you will not use the local defaults, the datasource variables.
+## Running Directly
 
 ### Windows PowerShell
 
@@ -179,6 +255,8 @@ $env:SPRING_DATASOURCE_URL = "jdbc:postgresql://localhost:5432/bluememo_db"
 $env:SPRING_DATASOURCE_USERNAME = "app_user"
 $env:SPRING_DATASOURCE_PASSWORD = "replace_with_a_strong_password"
 $env:JWT_SECRET = "replace_with_a_base64_encoded_secret"
+$env:TELEGRAM_BOT_TOKEN = "replace_with_the_development_bot_token"
+$env:TELEGRAM_WEBHOOK_SECRET = "replace_with_the_webhook_secret"
 
 .\mvnw.cmd spring-boot:run "-Dspring-boot.run.profiles=local"
 ```
@@ -192,67 +270,114 @@ export SPRING_DATASOURCE_URL=jdbc:postgresql://localhost:5432/bluememo_db
 export SPRING_DATASOURCE_USERNAME=app_user
 export SPRING_DATASOURCE_PASSWORD=replace_with_a_strong_password
 export JWT_SECRET=replace_with_a_base64_encoded_secret
+export TELEGRAM_BOT_TOKEN=replace_with_the_development_bot_token
+export TELEGRAM_WEBHOOK_SECRET=replace_with_the_webhook_secret
 
 ./mvnw spring-boot:run -Dspring-boot.run.profiles=local
 ```
 
-The API is available at `http://localhost:8080` unless `SERVER_PORT` specifies a different port.
+Direct execution exposes the API on port `8080` by default. Docker Compose maps it to port `8000` on the host.
 
-For QA or production, select the appropriate profile and provide all required connection variables.
+## Exposing the Local Webhook
 
-## Authentication
+For development, expose the local API through an HTTPS tunnel. With Docker Compose:
 
-Registration and login return:
+```bash
+cloudflared tunnel --url http://localhost:8000
+```
+
+For direct Maven execution, use `http://localhost:8080` instead. Copy the generated HTTPS URL and register the Telegram webhook.
+
+## Registering the Telegram Webhook
+
+Use the development bot for local BM-01 testing.
+
+### Linux or macOS
+
+```bash
+curl -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/setWebhook" \
+  -H "Content-Type: application/json" \
+  -d "{\"url\":\"https://YOUR_TUNNEL_URL/webhooks/telegram\",\"secret_token\":\"${TELEGRAM_WEBHOOK_SECRET}\",\"allowed_updates\":[\"message\"]}"
+```
+
+### Windows PowerShell
+
+```powershell
+$body = @{
+    url = "https://YOUR_TUNNEL_URL/webhooks/telegram"
+    secret_token = $env:TELEGRAM_WEBHOOK_SECRET
+    allowed_updates = @("message")
+} | ConvertTo-Json
+
+curl.exe -X POST `
+  "https://api.telegram.org/bot$env:TELEGRAM_BOT_TOKEN/setWebhook" `
+  -H "Content-Type: application/json" `
+  -d $body
+```
+
+Check the registration:
+
+```powershell
+curl.exe "https://api.telegram.org/bot$env:TELEGRAM_BOT_TOKEN/getWebhookInfo"
+```
+
+Telegram sends the configured secret in:
+
+```http
+X-Telegram-Bot-Api-Secret-Token: <secret>
+```
+
+## Webhook Example
+
+```http
+POST /webhooks/telegram
+Content-Type: application/json
+X-Telegram-Bot-Api-Secret-Token: <secret>
+```
 
 ```json
 {
-  "token": "<JWT>"
+  "update_id": 10000,
+  "message": {
+    "message_id": 123,
+    "date": 1787600000,
+    "text": "Hola",
+    "from": {
+      "id": 124,
+      "is_bot": false,
+      "first_name": "David",
+      "username": "david"
+    },
+    "chat": {
+      "id": 1235,
+      "type": "private"
+    }
+  }
 }
 ```
 
-Send the token to protected endpoints using:
+The endpoint is public in Spring Security but protected by the Telegram secret header. It does not require a BlueMemo JWT.
 
-```http
-Authorization: Bearer <JWT>
-```
+## REST Endpoints
 
-By default, the token expires after 15 minutes. `/auth/**`, Swagger/OpenAPI, and `/actuator/health` are public; all other endpoints require authentication.
+| Method | Endpoint | Authentication | Description |
+| --- | --- | --- | --- |
+| `POST` | `/webhooks/telegram` | Telegram secret | Receives Telegram updates |
+| `POST` | `/auth/register` | Public | Registers a user and returns a JWT |
+| `POST` | `/auth/login` | Public | Authenticates a user and returns a JWT |
+| `GET` | `/users/me` | JWT | Retrieves the authenticated profile |
+| `PATCH` | `/users/me` | JWT | Partially updates the profile |
+| `DELETE` | `/users/me` | JWT | Deletes the user and their tasks |
+| `POST` | `/todos` | JWT | Creates a task with `PENDING` status |
+| `GET` | `/todos` | JWT | Lists the user's tasks |
+| `GET` | `/todos/{todoId}` | JWT | Retrieves an owned task |
+| `PUT` | `/todos/{todoId}` | JWT | Updates title and description |
+| `PATCH` | `/todos/{todoId}?status={status}` | JWT | Updates task status |
+| `DELETE` | `/todos/{todoId}` | JWT | Deletes an owned task |
 
-## Endpoints
+`GET /todos` supports `status`, `sortBy`, `direction`, `page`, and `size`. Canonical task statuses are `PENDING`, `IN_PROGRESS`, and `DONE`; `COMPLETED` is accepted as an alias for `DONE`.
 
-| Method | Endpoint | Authentication | Response | Description |
-| --- | --- | --- | --- | --- |
-| `POST` | `/auth/register` | No | `201` | Registers a user and returns a JWT |
-| `POST` | `/auth/login` | No | `200` | Authenticates the user and returns a JWT |
-| `GET` | `/users/me` | Yes | `200` | Retrieves the authenticated user's profile |
-| `PATCH` | `/users/me` | Yes | `200` | Partially updates the profile |
-| `DELETE` | `/users/me` | Yes | `204` | Deletes the user and their tasks |
-| `POST` | `/todos` | Yes | `201` | Creates a task with `PENDING` status |
-| `GET` | `/todos` | Yes | `200` | Lists the user's tasks |
-| `GET` | `/todos/{todoId}` | Yes | `200` | Retrieves a task owned by the user |
-| `PUT` | `/todos/{todoId}` | Yes | `200` | Updates the title and description |
-| `PATCH` | `/todos/{todoId}?status={status}` | Yes | `200` | Updates the status |
-| `DELETE` | `/todos/{todoId}` | Yes | `204` | Deletes a task owned by the user |
-
-### List Parameters
-
-`GET /todos` accepts:
-
-| Parameter | Default | Accepted values |
-| --- | --- | --- |
-| `status` | No filter | `PENDING`, `IN_PROGRESS`, `COMPLETED` |
-| `sortBy` | `createdAt` | `createdAt`, `updatedAt`, `title`, `status` |
-| `direction` | `desc` | `asc`, `desc` |
-| `page` | `0` | Zero-based page number |
-| `size` | `10` | Items per page |
-
-The paginated response contains `content`, `page`, `size`, `numberOfElements`, and `totalElements`.
-
-## Usage Examples
-
-The examples use the Docker URL: `http://localhost:8000`.
-
-### Register a User
+## Authentication Example
 
 ```bash
 curl -X POST http://localhost:8000/auth/register \
@@ -264,114 +389,34 @@ curl -X POST http://localhost:8000/auth/register \
   }'
 ```
 
-The name must contain between 2 and 100 characters, and the password must contain at least 8 characters.
+The response contains:
 
-### Log In
-
-```bash
-curl -X POST http://localhost:8000/auth/login \
-  -H "Content-Type: application/json" \
-  -d '{
-    "email": "david@example.com",
-    "password": "Password123!"
-  }'
+```json
+{
+  "token": "<JWT>"
+}
 ```
 
-### Create a Task
+Use the token on protected endpoints:
 
-```bash
-curl -X POST http://localhost:8000/todos \
-  -H "Authorization: Bearer <JWT>" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "title": "Finish BlueMemo",
-    "description": "Validate the API documentation"
-  }'
+```http
+Authorization: Bearer <JWT>
 ```
 
-`title` cannot be blank, and both fields accept up to 255 characters.
+## Error Format
 
-### List Tasks
-
-```bash
-curl "http://localhost:8000/todos?status=IN_PROGRESS&sortBy=updatedAt&direction=asc&page=0&size=10" \
-  -H "Authorization: Bearer <JWT>"
-```
-
-### Update a Task
-
-Both `title` and `description` must be sent to this endpoint.
-
-```bash
-curl -X PUT http://localhost:8000/todos/<TODO_ID> \
-  -H "Authorization: Bearer <JWT>" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "title": "Finish and review BlueMemo",
-    "description": "Verify the documented configuration"
-  }'
-```
-
-### Update the Status
-
-```bash
-curl -X PATCH "http://localhost:8000/todos/<TODO_ID>?status=COMPLETED" \
-  -H "Authorization: Bearer <JWT>"
-```
-
-### Update the Profile
-
-`password` is the current password and authorizes the operation. The remaining fields are optional; `newPassword` changes the password.
-
-```bash
-curl -X PATCH http://localhost:8000/users/me \
-  -H "Authorization: Bearer <JWT>" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "name": "David Martinez",
-    "phone": "5512345678",
-    "birthdate": "1995-08-20",
-    "password": "Password123!",
-    "newPassword": "NewPassword123!"
-  }'
-```
-
-### Delete the Profile
-
-```bash
-curl -X DELETE http://localhost:8000/users/me \
-  -H "Authorization: Bearer <JWT>" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "password": "NewPassword123!"
-  }'
-```
-
-## Errors
-
-The API uses:
-
-- `400 Bad Request`: invalid fields, UUIDs, pagination, sorting, or statuses
-- `401 Unauthorized`: missing, invalid, or expired credentials or token
-- `403 Forbidden`: access denied by Spring Security
-- `404 Not Found`: user or task not found; a task owned by another user is also reported as not found
-- `409 Conflict`: duplicate email, phone number, or task title
-- `500 Internal Server Error`: unhandled error
-
-Error response format:
+Application errors use:
 
 ```json
 {
   "message": "Todo not found",
   "status": 404,
   "path": "/todos/00000000-0000-0000-0000-000000000000",
-  "timestamp": "2026-08-10T12:00:00"
+  "timestamp": "2026-08-24T12:00:00"
 }
 ```
 
 ## Testing and Coverage
-
-The test suite includes unit tests for services and JWT handling, a context test, and HTTP integration tests covering authentication, validation, security, user isolation, and the complete task lifecycle.
 
 Run the complete verification from `bluememo/`:
 
@@ -387,7 +432,19 @@ Run the complete verification from `bluememo/`:
 ./mvnw clean verify
 ```
 
-Tests use the `test` profile. Flyway creates the schema in H2 before Hibernate validates it.
+The BM-01 test suite covers:
+
+- Valid end-to-end Telegram message flow
+- Incorrect webhook secret
+- Updates without `message`
+- Messages without text
+- Missing update, message, date, chat, and sender identifiers
+- `/start`, `/help`, and unknown commands
+- Telegram API error and empty-response handling
+- Routing to Telegram and WhatsApp senders
+- Missing channel configuration
+
+Tests use the `test` profile, H2, MockMvc, and MockWebServer. No real Telegram call is made during automated tests.
 
 The JaCoCo report is generated at:
 
@@ -397,15 +454,19 @@ bluememo/target/site/jacoco/index.html
 
 ## Continuous Integration
 
-GitHub Actions runs the following command on every push and pull request targeting `main`:
+GitHub Actions runs `clean verify` for:
+
+- Pull requests targeting `main`
+- Pushes to `main`
+- Manual workflow executions
 
 ```bash
 ./mvnw --batch-mode --no-transfer-progress clean verify
 ```
 
-The workflow retains the JAR, Surefire reports, and JaCoCo report for seven days.
+The workflow retains the generated JAR, Surefire reports, and JaCoCo report for seven days.
 
-## Building and Running the JAR
+## Build the JAR
 
 ### Windows PowerShell
 
@@ -423,4 +484,15 @@ cd bluememo
 java -jar target/bluememo-0.0.1-SNAPSHOT.jar --spring.profiles.active=local
 ```
 
-The JAR requires the same datasource and JWT variables described above.
+The JAR requires the same datasource, JWT, and Telegram variables described above.
+
+## BM-01 Completion Criteria
+
+BM-01 is complete when:
+
+- The development bot delivers a real text update to the webhook
+- BlueMemo validates the webhook secret
+- The message crosses the generic messaging use case and router
+- Telegram receives the reply in the same chat
+- Unsupported or incomplete updates are acknowledged without outbound calls
+- The complete Maven verification passes in CI
