@@ -24,7 +24,7 @@ import io.jsonwebtoken.io.Decoders;
 import io.jsonwebtoken.security.Keys;
 
 @ExtendWith(MockitoExtension.class)
-public class JwtServiceTest {
+class JwtServiceTest {
 
     private static final String JWT_SECRET = "MDEyMzQ1Njc4OTAxMjM0NTY3ODkwMTIzNDU2Nzg5MDE=";
     private static final long JWT_EXPIRATION_MS = 3_600_000L;
@@ -192,17 +192,12 @@ public class JwtServiceTest {
         // Set expiration to 1 second for testing
         JwtProperties expiredProperties = new JwtProperties(
             JWT_SECRET,
-            1L
+            -2
         );
 
         JwtService expiredJwtService = new JwtService(expiredProperties);
         String token = expiredJwtService.generateToken(savedUser);
         // Wait for the token to expire
-        try {
-                Thread.sleep(15L);
-        } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
-        }
         boolean isValid = expiredJwtService.isTokenValid(token, userDetails);
         assertFalse(isValid);
     }

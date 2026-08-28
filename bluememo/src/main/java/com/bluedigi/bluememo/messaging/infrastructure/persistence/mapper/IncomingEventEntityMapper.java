@@ -18,7 +18,7 @@ public class IncomingEventEntityMapper {
                 .externalEventId(incomingEvent.getExternalEventId())
                 .eventType(incomingEvent.getEventType())
                 .status(incomingEvent.getStatus())
-                .createdAt(incomingEvent.getCreatedAt())
+                .receivedAt(incomingEvent.getReceivedAt())
                 .processedAt(incomingEvent.getProcessedAt())
                 .build();
     }

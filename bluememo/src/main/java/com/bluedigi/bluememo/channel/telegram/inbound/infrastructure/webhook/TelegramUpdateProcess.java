@@ -4,6 +4,7 @@ import com.bluedigi.bluememo.channel.telegram.inbound.infrastructure.webhook.map
 import com.bluedigi.bluememo.channel.telegram.inbound.infrastructure.webhook.request.TelegramUpdateRequest;
 import com.bluedigi.bluememo.messaging.application.port.in.ProcessIncomingMessageUseCase;
 import com.bluedigi.bluememo.messaging.application.port.out.IncomingEventRepository;
+import com.bluedigi.bluememo.messaging.domain.IncomingEvent;
 import com.bluedigi.bluememo.messaging.domain.IncomingMessage;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -28,7 +29,9 @@ public class TelegramUpdateProcess {
             return;
         }
 
-        Integer isInserted = incomingEventRepository.insertIfAbsent(telegramUpdateMapper.mapToIncomingEvent(request));
+        IncomingEvent incomingEvent = telegramUpdateMapper.mapToIncomingEvent(request);
+
+        Integer isInserted = incomingEventRepository.insertIfAbsent(incomingEvent);
 
         if (isInserted == 0) {
             log.debug("TelegramUpdateProcess::process: event already exists, skipping processing");

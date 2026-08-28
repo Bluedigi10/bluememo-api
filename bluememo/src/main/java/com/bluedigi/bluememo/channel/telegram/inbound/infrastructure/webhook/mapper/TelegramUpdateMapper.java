@@ -10,6 +10,7 @@ import com.bluedigi.bluememo.channel.telegram.inbound.infrastructure.webhook.req
 import com.bluedigi.bluememo.messaging.domain.IncomingMessage;
 
 import java.time.Instant;
+import java.util.UUID;
 
 @Component
 public class TelegramUpdateMapper {
@@ -32,11 +33,12 @@ public class TelegramUpdateMapper {
 
     public IncomingEvent mapToIncomingEvent(TelegramUpdateRequest request) {
         return IncomingEvent.builder()
+                .id(UUID.randomUUID())
                 .channelType(ChannelType.TELEGRAM)
                 .externalEventId(request.updateId().toString())
                 .eventType("message")
                 .status(IncomingEventStatus.PROCESSING)
-                .createdAt(Instant.now().atZone(java.time.ZoneId.systemDefault()).toLocalDateTime())
+                .receivedAt(Instant.now())
                 .build();
     }
 }

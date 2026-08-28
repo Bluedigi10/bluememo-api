@@ -13,19 +13,17 @@ import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.http.MediaType;
-import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 
 import com.bluedigi.bluememo.identity.infrastructure.persistence.repository.UserJpaRepository;
+import com.bluedigi.bluememo.testsupport.IntegrationTest;
 import com.bluedigi.bluememo.todo.infrastructure.persistance.repository.TodoJpaRepository;
 import com.jayway.jsonpath.JsonPath;
 
-@SpringBootTest
+@IntegrationTest
 @AutoConfigureMockMvc
-@ActiveProfiles("test")
 class HttpIntegrationTest {
 
     private static final String PASSWORD = "Password123!";

@@ -1,6 +1,8 @@
 package com.bluedigi.bluememo.messaging.infrastructure.persistence;
 
 import org.springframework.stereotype.Repository;
+import org.springframework.transaction.annotation.Propagation;
+import org.springframework.transaction.annotation.Transactional;
 
 import com.bluedigi.bluememo.messaging.application.port.out.IncomingEventRepository;
 import com.bluedigi.bluememo.messaging.domain.IncomingEvent;
@@ -19,6 +21,7 @@ public class IncomingEventAdapterRepository implements IncomingEventRepository {
     }
 
     @Override
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
     public int insertIfAbsent(IncomingEvent incomingEvent) {
         IncomingEventEntity entity = entityMapper.toEntity(incomingEvent);
 

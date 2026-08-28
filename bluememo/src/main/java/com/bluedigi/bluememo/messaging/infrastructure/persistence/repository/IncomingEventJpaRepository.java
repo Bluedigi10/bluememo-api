@@ -19,7 +19,7 @@ public interface IncomingEventJpaRepository extends JpaRepository<IncomingEventE
             external_event_id,
             event_type,
             status,
-            created_at,
+            received_at,
             processed_at
         )
         VALUES (
@@ -28,7 +28,7 @@ public interface IncomingEventJpaRepository extends JpaRepository<IncomingEventE
             :#{#event.externalEventId},
             :#{#event.eventType},
             :#{#event.status.name()},
-            :#{#event.createdAt},
+            :#{#event.receivedAt},
             :#{#event.processedAt}
         )
         ON CONFLICT (channel_type, external_event_id) DO NOTHING

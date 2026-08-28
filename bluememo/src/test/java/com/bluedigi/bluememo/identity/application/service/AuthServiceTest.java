@@ -29,7 +29,7 @@ import com.bluedigi.bluememo.identity.infrastructure.web.response.AuthResponse;
 import com.bluedigi.bluememo.shared.infrastructure.security.JwtService;
 
 @ExtendWith(MockitoExtension.class)
-public class AuthServiceTest {
+class AuthServiceTest {
     private static final String EMAIL = "david@example.com";
     private static final String RAW_PASSWORD = "password123";
     private static final String ENCODED_PASSWORD = "encoded-password";

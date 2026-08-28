@@ -1,6 +1,6 @@
 package com.bluedigi.bluememo.messaging.domain;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.UUID;
 
 import lombok.AccessLevel;
@@ -25,7 +25,7 @@ public class IncomingEvent {
     
     private IncomingEventStatus status;
     
-    private LocalDateTime createdAt;
+    private Instant receivedAt;
 
-    private LocalDateTime processedAt;
+    private Instant processedAt;
 }

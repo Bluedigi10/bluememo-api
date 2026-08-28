@@ -1,6 +1,6 @@
 package com.bluedigi.bluememo.messaging.infrastructure.persistence.entity;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.UUID;
 
 import com.bluedigi.bluememo.messaging.domain.ChannelType;
@@ -50,8 +50,8 @@ public class IncomingEventEntity {
     private IncomingEventStatus status;
     
     @Column(name = "received_at", nullable = false, updatable = false)
-    private LocalDateTime createdAt;
+    private Instant receivedAt;
 
     @Column(name = "processed_at")
-    private LocalDateTime processedAt;
+    private Instant processedAt;
 }

@@ -2,31 +2,38 @@ package com.bluedigi.bluememo.integration;
 
 import com.bluedigi.bluememo.channel.telegram.outbound.infrastructure.api.dto.TelegramHeader;
 import com.bluedigi.bluememo.messaging.domain.MessageConstants;
+import com.bluedigi.bluememo.messaging.infrastructure.persistence.repository.IncomingEventJpaRepository;
+import com.bluedigi.bluememo.testsupport.IntegrationTest;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
+
 import mockwebserver3.MockResponse;
 import mockwebserver3.MockWebServer;
 import mockwebserver3.RecordedRequest;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.http.MediaType;
-import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
+import org.testcontainers.junit.jupiter.Container;
+import org.testcontainers.postgresql.PostgreSQLContainer;
 
 import java.io.IOException;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Consumer;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-@SpringBootTest
+@IntegrationTest
 @AutoConfigureMockMvc
-@ActiveProfiles("test")
 class TelegramIntegrationTest {
     private static final String TELEGRAM_WH_SECRET = "WH_SECRET";
     private static final String TELEGRAM_BOT_TOKEN = "BOT_TOKEN";
@@ -35,14 +42,27 @@ class TelegramIntegrationTest {
     private static final String C_START = "/start";
     private static final String C_HELP = "/help";
     private static final String C_MUSIC = "/music";
+    
     @Autowired
     private MockMvc mockMvc;
+
+    @Autowired
+    private IncomingEventJpaRepository incomingEventJpaRepository;
+
+    @Container
+    @ServiceConnection
+    static PostgreSQLContainer postgres = new PostgreSQLContainer("postgres:17-alpine");
 
     private static final MockWebServer server = new MockWebServer();
 
     @BeforeAll
     static void setUp() throws IOException {
         server.start();
+    }
+
+    @BeforeEach
+    void cleanDatabase() {
+        incomingEventJpaRepository.deleteAll();
     }
 
     @DynamicPropertySource
@@ -68,6 +88,10 @@ class TelegramIntegrationTest {
 
     @Test
     void sendMessageCompleteFlowSuccess() throws Exception {
+        String updateBody = updateBody(root ->  {
+            root.put("update_id", 10000);
+            message(root).put("text", TEXT_MESSAGE);
+        });
         server.enqueue(
                 new MockResponse.Builder()
                         .code(200)
@@ -78,7 +102,7 @@ class TelegramIntegrationTest {
         mockMvc.perform(post("/webhooks/telegram")
                         .header(TelegramHeader.TELEGRAM_HEADER, TELEGRAM_WH_SECRET)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(updateBody(TEXT_MESSAGE)))
+                        .content(updateBody))
                 .andExpect(status().isOk());
 
         RecordedRequest request = server.takeRequest(1, TimeUnit.SECONDS);
@@ -90,29 +114,11 @@ class TelegramIntegrationTest {
     }
 
     @Test
-    void telegramWebHookSecretError()  throws Exception {
-        mockMvc.perform(post("/webhooks/telegram")
-                        .header(TelegramHeader.TELEGRAM_HEADER, "")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(updateBody(TEXT_MESSAGE)))
-                .andExpect(status().isUnauthorized());
-    }
-
-    @Test
-    void messageNullFlow()  throws Exception {
-        mockMvc.perform(post("/webhooks/telegram")
-                        .header(TelegramHeader.TELEGRAM_HEADER, TELEGRAM_WH_SECRET)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(updateNullMessageBody()))
-                .andExpect(status().isOk());
-
-        RecordedRequest request = server.takeRequest(1, TimeUnit.SECONDS);
-
-        assertThat(request).isNull();
-    }
-
-    @Test
-    void messageTextNullFlow()  throws Exception {
+    void sendMessageCompleteFlowWithIndepomtencySuccess() throws Exception {
+        String updateBody = updateBody(root ->  {
+            root.put("update_id", 10000);
+            message(root).put("text", TEXT_MESSAGE);
+        });
         server.enqueue(
                 new MockResponse.Builder()
                         .code(200)
@@ -123,7 +129,68 @@ class TelegramIntegrationTest {
         mockMvc.perform(post("/webhooks/telegram")
                         .header(TelegramHeader.TELEGRAM_HEADER, TELEGRAM_WH_SECRET)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(updateTextNullBody()))
+                        .content(updateBody))
+                .andExpect(status().isOk());
+
+        RecordedRequest request = server.takeRequest(1, TimeUnit.SECONDS);
+        assertThat(request).isNotNull();
+        assertThat(request.getMethod()).isEqualTo("POST");
+        assertThat(request.getUrl().encodedPath()).isEqualTo("/bot" + TELEGRAM_BOT_TOKEN + "/sendMessage");
+        assertThat(request.getBody()).isNotNull();
+        assertThat(request.getBody().utf8()).contains("Recibí " + TEXT_MESSAGE);
+
+        String updateBody2 = updateBody(root ->  {
+            root.put("update_id", 10000);
+            message(root).put("text", TEXT_MESSAGE);
+        });
+        mockMvc.perform(post("/webhooks/telegram")
+                        .header(TelegramHeader.TELEGRAM_HEADER, TELEGRAM_WH_SECRET)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(updateBody2))
+                .andExpect(status().isOk());
+
+        RecordedRequest requestNull = server.takeRequest(1, TimeUnit.SECONDS);
+        assertThat(requestNull).isNull();
+    }
+
+    @Test
+    void telegramWebHookSecretError()  throws Exception {
+        String updateBody = updateBody(root -> message(root).put("text", TEXT_MESSAGE));
+        mockMvc.perform(post("/webhooks/telegram")
+                        .header(TelegramHeader.TELEGRAM_HEADER, "")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(updateBody))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void messageNullFlow()  throws Exception {
+        String updateNullMessageBody = updateBody(root -> root.remove("message"));
+        mockMvc.perform(post("/webhooks/telegram")
+                        .header(TelegramHeader.TELEGRAM_HEADER, TELEGRAM_WH_SECRET)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(updateNullMessageBody))
+                .andExpect(status().isOk());
+
+        RecordedRequest request = server.takeRequest(1, TimeUnit.SECONDS);
+
+        assertThat(request).isNull();
+    }
+
+    @Test
+    void messageTextNullFlow()  throws Exception {
+        String updateTextNullBody = updateBody(root -> message(root).remove("text"));
+        server.enqueue(
+                new MockResponse.Builder()
+                        .code(200)
+                        .addHeader("Content-Type", "application/json")
+                        .body(successMessageSendBody(TEXT_MESSAGE))
+                        .build()
+        );
+        mockMvc.perform(post("/webhooks/telegram")
+                        .header(TelegramHeader.TELEGRAM_HEADER, TELEGRAM_WH_SECRET)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(updateTextNullBody))
                 .andExpect(status().isOk());
 
         RecordedRequest request = server.takeRequest(1, TimeUnit.SECONDS);
@@ -140,6 +207,7 @@ class TelegramIntegrationTest {
 
     @Test
     void messageTextEmptyFlow()  throws Exception {
+        String updateBody = updateBody(root -> message(root).put("text", EMPTY));
         server.enqueue(
                 new MockResponse.Builder()
                         .code(200)
@@ -150,7 +218,7 @@ class TelegramIntegrationTest {
         mockMvc.perform(post("/webhooks/telegram")
                         .header(TelegramHeader.TELEGRAM_HEADER, TELEGRAM_WH_SECRET)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(updateBody(EMPTY)))
+                        .content(updateBody))
                 .andExpect(status().isOk());
 
         RecordedRequest request = server.takeRequest(1, TimeUnit.SECONDS);
@@ -167,6 +235,7 @@ class TelegramIntegrationTest {
 
     @Test
     void messageCommandStartFlow()  throws Exception {
+        String updateBody = updateBody(root -> message(root).put("text", C_START));
         server.enqueue(
                 new MockResponse.Builder()
                         .code(200)
@@ -177,7 +246,7 @@ class TelegramIntegrationTest {
         mockMvc.perform(post("/webhooks/telegram")
                         .header(TelegramHeader.TELEGRAM_HEADER, TELEGRAM_WH_SECRET)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(updateBody(C_START)))
+                        .content(updateBody))
                 .andExpect(status().isOk());
 
         RecordedRequest request = server.takeRequest(1, TimeUnit.SECONDS);
@@ -194,6 +263,7 @@ class TelegramIntegrationTest {
 
     @Test
     void messageCommandHelpFlow()  throws Exception {
+        String updateBody = updateBody(root -> message(root).put("text", C_HELP));
         server.enqueue(
                 new MockResponse.Builder()
                         .code(200)
@@ -204,7 +274,7 @@ class TelegramIntegrationTest {
         mockMvc.perform(post("/webhooks/telegram")
                         .header(TelegramHeader.TELEGRAM_HEADER, TELEGRAM_WH_SECRET)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(updateBody(C_HELP)))
+                        .content(updateBody))
                 .andExpect(status().isOk());
 
         RecordedRequest request = server.takeRequest(1, TimeUnit.SECONDS);
@@ -221,6 +291,7 @@ class TelegramIntegrationTest {
 
     @Test
     void messageCommandUnknownFlow()  throws Exception {
+        String updateBody = updateBody(root -> message(root).put("text", C_MUSIC));
         server.enqueue(
                 new MockResponse.Builder()
                         .code(200)
@@ -231,7 +302,7 @@ class TelegramIntegrationTest {
         mockMvc.perform(post("/webhooks/telegram")
                         .header(TelegramHeader.TELEGRAM_HEADER, TELEGRAM_WH_SECRET)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(updateBody(C_MUSIC)))
+                        .content(updateBody))
                 .andExpect(status().isOk());
 
         RecordedRequest request = server.takeRequest(1, TimeUnit.SECONDS);
@@ -248,6 +319,7 @@ class TelegramIntegrationTest {
 
     @Test
     void sendMessageError500Response() throws Exception {
+        String updateBody = updateBody(root -> message(root).put("text", TEXT_MESSAGE));
         server.enqueue(
                 new MockResponse.Builder()
                         .code(500)
@@ -257,7 +329,7 @@ class TelegramIntegrationTest {
         mockMvc.perform(post("/webhooks/telegram")
                         .header(TelegramHeader.TELEGRAM_HEADER, TELEGRAM_WH_SECRET)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(updateBody(TEXT_MESSAGE)))
+                        .content(updateBody))
                 .andExpect(status().isInternalServerError());
 
         RecordedRequest request = server.takeRequest(1, TimeUnit.SECONDS);
@@ -268,6 +340,7 @@ class TelegramIntegrationTest {
 
     @Test
     void sendMessageBodyResponseNull() throws Exception {
+        String updateBody = updateBody(root -> message(root).put("text", TEXT_MESSAGE));
         server.enqueue(
                 new MockResponse.Builder()
                         .code(200)
@@ -277,7 +350,7 @@ class TelegramIntegrationTest {
         mockMvc.perform(post("/webhooks/telegram")
                         .header(TelegramHeader.TELEGRAM_HEADER, TELEGRAM_WH_SECRET)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(updateBody(TEXT_MESSAGE)))
+                        .content(updateBody))
                 .andExpect(status().isInternalServerError());
 
         RecordedRequest request = server.takeRequest(1, TimeUnit.SECONDS);
@@ -288,13 +361,14 @@ class TelegramIntegrationTest {
 
     @Test
     void shouldIgnoreMessageWithoutChat() throws Exception {
+        String updateWithoutChatBody = updateBody(root -> message(root).remove("chat"));
         mockMvc.perform(post("/webhooks/telegram")
                         .header(
                                 TelegramHeader.TELEGRAM_HEADER,
                                 TELEGRAM_WH_SECRET
                         )
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(updateWithoutChatBody()))
+                        .content(updateWithoutChatBody))
                 .andExpect(status().isOk());
 
         RecordedRequest outboundRequest =
@@ -305,13 +379,14 @@ class TelegramIntegrationTest {
 
     @Test
     void shouldIgnoreMessageWithoutFrom() throws Exception {
+        String updateWithoutFromBody = updateBody(root -> message(root).remove("from"));
         mockMvc.perform(post("/webhooks/telegram")
                         .header(
                                 TelegramHeader.TELEGRAM_HEADER,
                                 TELEGRAM_WH_SECRET
                         )
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(updateWithoutFromBody()))
+                        .content(updateWithoutFromBody))
                 .andExpect(status().isOk());
 
         RecordedRequest outboundRequest =
@@ -322,13 +397,14 @@ class TelegramIntegrationTest {
 
     @Test
     void shouldIgnoreMessageWithoutDate() throws Exception {
+        String updateWithoutDateBody = updateBody(root -> message(root).remove("date"));
         mockMvc.perform(post("/webhooks/telegram")
                         .header(
                                 TelegramHeader.TELEGRAM_HEADER,
                                 TELEGRAM_WH_SECRET
                         )
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(updateWithoutDateBody()))
+                        .content(updateWithoutDateBody))
                 .andExpect(status().isOk());
 
         RecordedRequest outboundRequest =
@@ -339,13 +415,14 @@ class TelegramIntegrationTest {
 
     @Test
     void shouldIgnoreMessageWithoutMessageId() throws Exception {
+        String updateWithoutMessageIdBody = updateBody(root -> message(root).remove("message_id"));
         mockMvc.perform(post("/webhooks/telegram")
                         .header(
                                 TelegramHeader.TELEGRAM_HEADER,
                                 TELEGRAM_WH_SECRET
                         )
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(updateWithoutMessageIdBody()))
+                        .content(updateWithoutMessageIdBody))
                 .andExpect(status().isOk());
 
         RecordedRequest outboundRequest =
@@ -356,13 +433,14 @@ class TelegramIntegrationTest {
 
     @Test
     void shouldIgnoreMessageWithoutUpdateId() throws Exception {
+        String updateWithoutUpdateIdBody = updateBody(root -> root.remove("update_id"));
         mockMvc.perform(post("/webhooks/telegram")
                         .header(
                                 TelegramHeader.TELEGRAM_HEADER,
                                 TELEGRAM_WH_SECRET
                         )
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(updateWithoutUpdateIdBody()))
+                        .content(updateWithoutUpdateIdBody))
                 .andExpect(status().isOk());
 
         RecordedRequest outboundRequest =
@@ -373,13 +451,14 @@ class TelegramIntegrationTest {
 
     @Test
     void shouldIgnoreMessageWithoutChatId() throws Exception {
+        String updateChatIdNullBody = updateBody(root -> chat(root).remove("id"));
         mockMvc.perform(post("/webhooks/telegram")
                         .header(
                                 TelegramHeader.TELEGRAM_HEADER,
                                 TELEGRAM_WH_SECRET
                         )
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(updateChatIdNullBody()))
+                        .content(updateChatIdNullBody))
                 .andExpect(status().isOk());
 
         RecordedRequest outboundRequest =
@@ -390,13 +469,14 @@ class TelegramIntegrationTest {
 
     @Test
     void shouldIgnoreMessageWithoutFromId() throws Exception {
+        String updateFromIdNullBody = updateBody(root -> from(root).remove("id"));
         mockMvc.perform(post("/webhooks/telegram")
                         .header(
                                 TelegramHeader.TELEGRAM_HEADER,
                                 TELEGRAM_WH_SECRET
                         )
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(updateFromIdNullBody()))
+                        .content(updateFromIdNullBody))
                 .andExpect(status().isOk());
 
         RecordedRequest outboundRequest =
@@ -405,203 +485,47 @@ class TelegramIntegrationTest {
         assertThat(outboundRequest).isNull();
     }
 
-    private String updateWithoutChatBody() {
-        return """
-            {
-              "update_id": 10000,
-              "message": {
-                "message_id": 123,
-                "date": 1234,
-                "text": "Hola",
-                "from": {
-                  "id": 124
-                }
-              }
-            }
-            """;
+    private ObjectNode validUpdateBody() {
+        ObjectMapper mapper = new ObjectMapper();
+        
+        ObjectNode root = mapper.createObjectNode();
+        
+        root.put("update_id", 10000);
+        
+        ObjectNode message = root.putObject("message");
+        message.put("message_id", 123);
+        message.put("date", 1234);
+        message.put("text", "Hola");
+        
+        ObjectNode from = message.putObject("from");
+        from.put("id", 124);
+        from.put("is_bot", true);
+        from.put("first_name", "Emma");
+        from.put("username", "emmatest");
+        
+        ObjectNode chat = message.putObject("chat");
+        chat.put("id", 1235);
+        chat.put("type", "private");
+        
+        return root;
     }
 
-    private String updateWithoutFromBody() {
-        return """
-            {
-              "update_id": 10000,
-              "message": {
-                "message_id": 123,
-                "date": 1234,
-                "text": "Hola",
-                 "chat":{
-                     "id":1235,
-                     "type":"private"
-                 }
-              }
-            }
-            """;
+    private String updateBody(Consumer<ObjectNode> modifier) {
+        ObjectNode root = validUpdateBody();
+        modifier.accept(root);
+        return root.toString();
     }
-
-    private String updateWithoutDateBody(){
-        return """
-                {
-                    "update_id": 10000,
-                    "message": {
-                        "message_id": 123,
-                        "text":"%s",
-                        "from":{
-                            "id":124,
-                            "is_bot": true,
-                            "first_name": "Emma",
-                            "username":"emmatest"
-                        },
-                        "chat":{
-                            "id":1235,
-                            "type":"private"
-                        }
-                    }
-                }
-                """;
+    
+    private ObjectNode message(ObjectNode root) {
+        return (ObjectNode) root.path("message");
     }
-    private String updateWithoutMessageIdBody(){
-        return """
-                {
-                    "update_id": 10000,
-                    "message": {
-                        "date": 1234,
-                        "text":"%s",
-                        "from":{
-                            "id":124,
-                            "is_bot": true,
-                            "first_name": "Emma",
-                            "username":"emmatest"
-                        },
-                        "chat":{
-                            "id":1235,
-                            "type":"private"
-                        }
-                    }
-                }
-                """;
+    
+    private ObjectNode from(ObjectNode root) {
+        return (ObjectNode) root.path("message").path("from");
     }
-
-    private String updateWithoutUpdateIdBody(){
-        return """
-                {
-                    "message": {
-                        "message_id": 123,
-                        "date": 1234,
-                        "text":"%s",
-                        "from":{
-                            "id":124,
-                            "is_bot": true,
-                            "first_name": "Emma",
-                            "username":"emmatest"
-                        },
-                        "chat":{
-                            "id":1235,
-                            "type":"private"
-                        }
-                    }
-                }
-                """;
-    }
-
-    private String updateChatIdNullBody(){
-        return """
-                {
-                    "update_id": 10000,
-                    "message": {
-                        "message_id": 123,
-                        "date": 1234,
-                        "text":"%s",
-                        "from":{
-                            "id":124,
-                            "is_bot": true,
-                            "first_name": "Emma",
-                            "username":"emmatest"
-                        },
-                        "chat":{
-                            "type":"private"
-                        }
-                    }
-                }
-                """;
-    }
-
-    private String updateFromIdNullBody(){
-        return """
-                {
-                    "update_id": 10000,
-                    "message": {
-                        "message_id": 123,
-                        "date": 1234,
-                        "text":"%s",
-                        "from":{
-                            "is_bot": true,
-                            "first_name": "Emma",
-                            "username":"emmatest"
-                        },
-                        "chat":{
-                            "id":1235,
-                            "type":"private"
-                        }
-                    }
-                }
-                """;
-    }
-
-    private String updateBody(String text){
-        return """
-                {
-                    "update_id": 10000,
-                    "message": {
-                        "message_id": 123,
-                        "date": 1234,
-                        "text":"%s",
-                        "from":{
-                            "id":124,
-                            "is_bot": true,
-                            "first_name": "Emma",
-                            "username":"emmatest"
-                        },
-                        "chat":{
-                            "id":1235,
-                            "type":"private"
-                        }
-                    }
-                }
-                """.formatted(text);
-    }
-
-
-
-    private String updateTextNullBody(){
-        return """
-                {
-                    "update_id": 10000,
-                    "message": {
-                        "message_id": 123,
-                        "date": 1234,
-                        "from":{
-                            "id":124,
-                            "is_bot": true,
-                            "first_name": "Emma",
-                            "username":"emmatest"
-                        },
-                        "chat":{
-                            "id":1235,
-                            "type":"private"
-                        }
-                    }
-                }
-                """;
-    }
-
-
-
-    private String updateNullMessageBody(){
-        return """
-                {
-                    "update_id": 10000
-                }
-                """;
+    
+    private ObjectNode chat(ObjectNode root) {
+        return (ObjectNode) root.path("message").path("chat");
     }
 
     private String successMessageSendBody(String text){
@@ -620,4 +544,5 @@ class TelegramIntegrationTest {
                 }
                 """.formatted(text);
     }
+
 }
