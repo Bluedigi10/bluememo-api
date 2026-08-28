@@ -6,6 +6,7 @@ import mockwebserver3.MockResponse;
 import mockwebserver3.MockWebServer;
 import mockwebserver3.RecordedRequest;
 import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -26,7 +27,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @SpringBootTest
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
-public class TelegramIntegrationTest {
+class TelegramIntegrationTest {
     private static final String TELEGRAM_WH_SECRET = "WH_SECRET";
     private static final String TELEGRAM_BOT_TOKEN = "BOT_TOKEN";
     private static final String TEXT_MESSAGE = "Hello World!";
@@ -39,12 +40,9 @@ public class TelegramIntegrationTest {
 
     private static final MockWebServer server = new MockWebServer();
 
-    static {
-        try {
-            server.start();
-        } catch (IOException exception) {
-            throw new ExceptionInInitializerError(exception);
-        }
+    @BeforeAll
+    static void setUp() throws IOException {
+        server.start();
     }
 
     @DynamicPropertySource
@@ -135,8 +133,9 @@ public class TelegramIntegrationTest {
         assertThat(request.getMethod()).isEqualTo("POST");
         assertThat(request.getBody()).isNotNull();
         String body = request.getBody().utf8();
-        assertThat(body).isNotNull();
-        assertThat(body).contains("De momento solo proceso texto");
+        assertThat(body)
+            .isNotNull()
+            .contains("De momento solo proceso texto");
     }
 
     @Test
@@ -161,8 +160,9 @@ public class TelegramIntegrationTest {
         assertThat(request.getMethod()).isEqualTo("POST");
         assertThat(request.getBody()).isNotNull();
         String body = request.getBody().utf8();
-        assertThat(body).isNotNull();
-        assertThat(body).contains("De momento solo proceso texto");
+        assertThat(body)
+            .isNotNull()
+            .contains("De momento solo proceso texto");
     }
 
     @Test
@@ -187,8 +187,9 @@ public class TelegramIntegrationTest {
         assertThat(request.getMethod()).isEqualTo("POST");
         assertThat(request.getBody()).isNotNull();
         String body = request.getBody().utf8();
-        assertThat(body).isNotNull();
-        assertThat(body).contains(MessageConstants.START);
+        assertThat(body)
+            .isNotNull()
+            .contains(MessageConstants.START);
     }
 
     @Test
@@ -213,8 +214,9 @@ public class TelegramIntegrationTest {
         assertThat(request.getMethod()).isEqualTo("POST");
         assertThat(request.getBody()).isNotNull();
         String body = request.getBody().utf8();
-        assertThat(body).isNotNull();
-        assertThat(body).contains(MessageConstants.HELP);
+        assertThat(body)
+            .isNotNull()
+            .contains(MessageConstants.HELP);
     }
 
     @Test
@@ -239,8 +241,9 @@ public class TelegramIntegrationTest {
         assertThat(request.getMethod()).isEqualTo("POST");
         assertThat(request.getBody()).isNotNull();
         String body = request.getBody().utf8();
-        assertThat(body).isNotNull();
-        assertThat(body).contains(MessageConstants.DEFAULT);
+        assertThat(body)
+            .isNotNull()
+            .contains(MessageConstants.DEFAULT);
     }
 
     @Test

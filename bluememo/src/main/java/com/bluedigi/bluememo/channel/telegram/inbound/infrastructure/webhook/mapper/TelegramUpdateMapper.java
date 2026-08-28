@@ -1,6 +1,9 @@
 package com.bluedigi.bluememo.channel.telegram.inbound.infrastructure.webhook.mapper;
 
 import com.bluedigi.bluememo.messaging.domain.ChannelType;
+import com.bluedigi.bluememo.messaging.domain.IncomingEvent;
+import com.bluedigi.bluememo.messaging.domain.IncomingEventStatus;
+
 import org.springframework.stereotype.Component;
 
 import com.bluedigi.bluememo.channel.telegram.inbound.infrastructure.webhook.request.TelegramUpdateRequest;
@@ -25,5 +28,15 @@ public class TelegramUpdateMapper {
 
     private Instant toDate(Long date){
         return Instant.ofEpochSecond(date);
+    }
+
+    public IncomingEvent mapToIncomingEvent(TelegramUpdateRequest request) {
+        return IncomingEvent.builder()
+                .channelType(ChannelType.TELEGRAM)
+                .externalEventId(request.updateId().toString())
+                .eventType("message")
+                .status(IncomingEventStatus.PROCESSING)
+                .createdAt(Instant.now().atZone(java.time.ZoneId.systemDefault()).toLocalDateTime())
+                .build();
     }
 }

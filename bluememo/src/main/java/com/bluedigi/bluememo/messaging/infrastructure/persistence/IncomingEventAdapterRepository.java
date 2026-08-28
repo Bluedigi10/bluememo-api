@@ -1,0 +1,28 @@
+package com.bluedigi.bluememo.messaging.infrastructure.persistence;
+
+import org.springframework.stereotype.Repository;
+
+import com.bluedigi.bluememo.messaging.application.port.out.IncomingEventRepository;
+import com.bluedigi.bluememo.messaging.domain.IncomingEvent;
+import com.bluedigi.bluememo.messaging.infrastructure.persistence.entity.IncomingEventEntity;
+import com.bluedigi.bluememo.messaging.infrastructure.persistence.mapper.IncomingEventEntityMapper;
+import com.bluedigi.bluememo.messaging.infrastructure.persistence.repository.IncomingEventJpaRepository;
+
+@Repository
+public class IncomingEventAdapterRepository implements IncomingEventRepository {
+    private final IncomingEventJpaRepository jpaRepository;
+    private final IncomingEventEntityMapper entityMapper;
+
+    public IncomingEventAdapterRepository(IncomingEventJpaRepository jpaRepository, IncomingEventEntityMapper entityMapper) {
+        this.jpaRepository = jpaRepository;
+        this.entityMapper = entityMapper;
+    }
+
+    @Override
+    public int insertIfAbsent(IncomingEvent incomingEvent) {
+        IncomingEventEntity entity = entityMapper.toEntity(incomingEvent);
+
+        return jpaRepository.insertIfAbsent(entity);
+    }
+    
+}

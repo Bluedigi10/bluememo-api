@@ -6,6 +6,7 @@ import com.bluedigi.bluememo.messaging.domain.OutgoingMessage;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.List;
@@ -14,18 +15,17 @@ import static com.bluedigi.bluememo.messaging.domain.ChannelType.TELEGRAM;
 import static com.bluedigi.bluememo.messaging.domain.ChannelType.WHATSAPP;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
-public class SendMessageRouterTest {
-    private final ChannelMessageSender telegramSender =
-            mock(ChannelMessageSender.class);
+class SendMessageRouterTest {
+    @Mock
+    private ChannelMessageSender telegramSender;
 
-    private final ChannelMessageSender whatsappSender =
-            mock(ChannelMessageSender.class);
+    @Mock
+    private ChannelMessageSender whatsappSender;
 
     private SendMessageRouter router;
 
