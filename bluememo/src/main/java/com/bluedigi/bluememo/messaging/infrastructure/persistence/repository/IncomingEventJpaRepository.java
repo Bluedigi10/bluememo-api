@@ -7,6 +7,8 @@ import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import com.bluedigi.bluememo.messaging.domain.ChannelType;
+import com.bluedigi.bluememo.messaging.domain.IncomingEventStatus;
 import com.bluedigi.bluememo.messaging.infrastructure.persistence.entity.IncomingEventEntity;
 
 public interface IncomingEventJpaRepository extends JpaRepository<IncomingEventEntity, UUID> {
@@ -36,4 +38,16 @@ public interface IncomingEventJpaRepository extends JpaRepository<IncomingEventE
     int insertIfAbsent(
         @Param("event") IncomingEventEntity event
     );
+
+    @Modifying
+    @Query(value = """
+            UPDATE incoming_events e
+            SET e.status = :status
+            WHERE e.channel_type = :channelType
+            AND e.external_event_id = :externalEventId
+            """, nativeQuery = true)
+    int updateStatusByExternalEventIdAndChannelType(
+        @Param("externalEventId") String externalEventId,
+        @Param("channelType") ChannelType channelType,
+        @Param("status") IncomingEventStatus status);
 }

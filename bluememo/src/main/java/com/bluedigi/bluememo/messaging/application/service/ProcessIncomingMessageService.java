@@ -1,30 +1,39 @@
 package com.bluedigi.bluememo.messaging.application.service;
 
+import com.bluedigi.bluememo.messaging.application.port.out.IncomingEventRepository;
 import com.bluedigi.bluememo.messaging.application.port.out.SendMessagePort;
 import com.bluedigi.bluememo.messaging.domain.OutgoingMessage;
+
+import lombok.NoArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
+import com.bluedigi.bluememo.messaging.application.mapper.IncomingMessageMapper;
 import com.bluedigi.bluememo.messaging.application.port.in.ProcessIncomingMessageUseCase;
+import com.bluedigi.bluememo.messaging.domain.IncomingEvent;
+import com.bluedigi.bluememo.messaging.domain.IncomingEventStatus;
 import com.bluedigi.bluememo.messaging.domain.IncomingMessage;
 
 @Slf4j
+@NoArgsConstructor
 @Service
 public class ProcessIncomingMessageService implements ProcessIncomingMessageUseCase {
-    private final SendMessagePort sender;
-
-    public ProcessIncomingMessageService(SendMessagePort sender) {
-        this.sender = sender;
-    }
-
+    private static SendMessagePort sender;
+    private static IncomingEventRepository eventRepository;
+    private static IncomingMessageMapper mapper;
 
     @Override
     public void process(IncomingMessage message) {
 
         String reply = processReply(message.text());
 
+        IncomingEvent updateToProcessed = mapper.incomingMessageToIncomingEvent(message, IncomingEventStatus.PROCESSED);
+
+        eventRepository.updateIncomingEventStatus(updateToProcessed);
+
         OutgoingMessage toSend = new OutgoingMessage(
                 message.channelType(),
+                message.externalMessageId(),
                 message.conversationId(),
                 reply
         );

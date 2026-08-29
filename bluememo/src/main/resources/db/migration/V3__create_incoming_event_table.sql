@@ -3,7 +3,7 @@ CREATE TABLE incoming_events (
     channel_type VARCHAR(30) NOT NULL,
     external_event_id VARCHAR(255) NOT NULL,
     event_type VARCHAR(255),
-    status VARCHAR(30),
+    status VARCHAR(30) NOT NULL,
     received_at TIMESTAMP WITH TIME ZONE NOT NULL,
     processed_at TIMESTAMP WITH TIME ZONE,
 

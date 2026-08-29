@@ -22,10 +22,18 @@ public class IncomingEventAdapterRepository implements IncomingEventRepository {
 
     @Override
     @Transactional(propagation = Propagation.REQUIRES_NEW)
-    public int insertIfAbsent(IncomingEvent incomingEvent) {
+    public Boolean insertIfAbsent(IncomingEvent incomingEvent) {
         IncomingEventEntity entity = entityMapper.toEntity(incomingEvent);
 
-        return jpaRepository.insertIfAbsent(entity);
+        return jpaRepository.insertIfAbsent(entity) == 1;
+    }
+
+    @Override
+    public Boolean updateIncomingEventStatus(IncomingEvent incomingEvent) {
+        return jpaRepository.updateStatusByExternalEventIdAndChannelType(
+            incomingEvent.getExternalEventId(), 
+            incomingEvent.getChannelType(), 
+            incomingEvent.getStatus()) == 1;
     }
     
 }

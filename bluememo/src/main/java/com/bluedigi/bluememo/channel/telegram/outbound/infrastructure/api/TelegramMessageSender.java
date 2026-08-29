@@ -6,21 +6,23 @@ import com.bluedigi.bluememo.channel.telegram.outbound.infrastructure.api.dto.re
 import com.bluedigi.bluememo.channel.telegram.outbound.infrastructure.api.dto.response.TelegramApiResponse;
 import com.bluedigi.bluememo.channel.telegram.outbound.infrastructure.api.mapper.TelegramSendMessageMapper;
 import com.bluedigi.bluememo.messaging.application.port.out.ChannelMessageSender;
+import com.bluedigi.bluememo.messaging.application.port.out.IncomingEventRepository;
 import com.bluedigi.bluememo.messaging.domain.ChannelType;
+import com.bluedigi.bluememo.messaging.domain.IncomingEvent;
+import com.bluedigi.bluememo.messaging.domain.IncomingEventStatus;
 import com.bluedigi.bluememo.messaging.domain.OutgoingMessage;
+
+import lombok.NoArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 @Slf4j
+@NoArgsConstructor
 @Service
 public class TelegramMessageSender implements ChannelMessageSender {
-    private final TelegramSendMessageMapper telegramSendMessageMapper;
-    private final TelegramApiClient telegramApiClient;
-
-    public TelegramMessageSender(TelegramSendMessageMapper telegramSendMessageMapper, TelegramApiClient telegramApiClient) {
-        this.telegramSendMessageMapper = telegramSendMessageMapper;
-        this.telegramApiClient = telegramApiClient;
-    }
+    private static TelegramSendMessageMapper telegramSendMessageMapper;
+    private static TelegramApiClient telegramApiClient;
+    private static IncomingEventRepository eventRepository;
 
 
     @Override
@@ -48,5 +50,9 @@ public class TelegramMessageSender implements ChannelMessageSender {
                 response.result().chat().id(),
                 response.result().messageId()
         );
+
+        IncomingEvent messageAnswered = telegramSendMessageMapper.toIncomingEvent(message.externalMessageId(), IncomingEventStatus.ANSWERED);
+
+        eventRepository.updateIncomingEventStatus(messageAnswered);
     }
 }

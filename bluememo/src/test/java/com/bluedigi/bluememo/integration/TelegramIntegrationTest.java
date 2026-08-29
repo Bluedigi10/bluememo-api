@@ -15,16 +15,17 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.postgresql.PostgreSQLContainer;
 
 import java.io.IOException;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 
@@ -48,10 +49,6 @@ class TelegramIntegrationTest {
 
     @Autowired
     private IncomingEventJpaRepository incomingEventJpaRepository;
-
-    @Container
-    @ServiceConnection
-    static PostgreSQLContainer postgres = new PostgreSQLContainer("postgres:17-alpine");
 
     private static final MockWebServer server = new MockWebServer();
 
@@ -114,7 +111,7 @@ class TelegramIntegrationTest {
     }
 
     @Test
-    void sendMessageCompleteFlowWithIndepomtencySuccess() throws Exception {
+    void sendMessageCompleteFlowWithIdempotencySuccess() throws Exception {
         String updateBody = updateBody(root ->  {
             root.put("update_id", 10000);
             message(root).put("text", TEXT_MESSAGE);
@@ -151,6 +148,80 @@ class TelegramIntegrationTest {
 
         RecordedRequest requestNull = server.takeRequest(1, TimeUnit.SECONDS);
         assertThat(requestNull).isNull();
+    }
+
+    @Test
+    void sendMessageCompleteFlowWithIdempotencyAndConcurrencySuccess() throws Exception {
+        String updateBody = updateBody(root -> {
+            root.put("update_id", 10000);
+            message(root).put("text", TEXT_MESSAGE);
+        });
+
+        server.enqueue(
+                new MockResponse.Builder()
+                        .code(200)
+                        .addHeader("Content-Type", "application/json")
+                        .body(successMessageSendBody(TEXT_MESSAGE))
+                        .build()
+        );
+
+        CountDownLatch start = new CountDownLatch(1);
+
+        ExecutorService executor = Executors.newFixedThreadPool(2);
+
+        Future<?> firstRequest = executor.submit(() -> {
+            start.await();
+
+            mockMvc.perform(post("/webhooks/telegram")
+                            .header(
+                                    TelegramHeader.TELEGRAM_HEADER,
+                                    TELEGRAM_WH_SECRET
+                            )
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(updateBody))
+                    .andExpect(status().isOk());
+
+            return null;
+        });
+
+        Future<?> secondRequest = executor.submit(() -> {
+            start.await();
+
+            mockMvc.perform(post("/webhooks/telegram")
+                            .header(
+                                    TelegramHeader.TELEGRAM_HEADER,
+                                    TELEGRAM_WH_SECRET
+                            )
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(updateBody))
+                    .andExpect(status().isOk());
+
+            return null;
+        });
+
+        // Libera ambas peticiones al mismo tiempo
+        start.countDown();
+
+        firstRequest.get();
+        secondRequest.get();
+
+        executor.shutdown();
+
+        RecordedRequest request =
+                server.takeRequest(1, TimeUnit.SECONDS);
+
+        assertThat(request).isNotNull();
+        assertThat(request.getMethod()).isEqualTo("POST");
+        assertThat(request.getUrl().encodedPath())
+                .isEqualTo("/bot" + TELEGRAM_BOT_TOKEN + "/sendMessage");
+
+        RecordedRequest duplicatedRequest =
+                server.takeRequest(200, TimeUnit.MILLISECONDS);
+
+        assertThat(duplicatedRequest).isNull();
+
+        assertThat(incomingEventJpaRepository.count())
+                .isEqualTo(1);
     }
 
     @Test

@@ -12,7 +12,6 @@ import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
-import jakarta.persistence.UniqueConstraint;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -21,12 +20,7 @@ import lombok.NoArgsConstructor;
 
 @Builder
 @Getter
-@Table(
-    name = "incoming_events",
-    uniqueConstraints = @UniqueConstraint(
-        name = "uk_incoming_events_channel_external_id",
-        columnNames = {"channel_type", "external_event_id"}
-    ))
+@Table(name = "incoming_events")
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @AllArgsConstructor(access = AccessLevel.PRIVATE)
 @Entity

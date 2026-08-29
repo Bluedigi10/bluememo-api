@@ -1,8 +1,9 @@
 package com.bluedigi.bluememo.messaging.domain;
 
 public enum IncomingEventStatus {
-    RECEIVED,
     FAILED,
-    PROCESSED,
+    RECEIVED,
     PROCESSING,
+    PROCESSED,
+    ANSWERED
 }

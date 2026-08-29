@@ -31,13 +31,13 @@ public class TelegramUpdateMapper {
         return Instant.ofEpochSecond(date);
     }
 
-    public IncomingEvent mapToIncomingEvent(TelegramUpdateRequest request) {
+    public IncomingEvent mapToIncomingEvent(TelegramUpdateRequest request, IncomingEventStatus status) {
         return IncomingEvent.builder()
                 .id(UUID.randomUUID())
                 .channelType(ChannelType.TELEGRAM)
                 .externalEventId(request.updateId().toString())
                 .eventType("message")
-                .status(IncomingEventStatus.PROCESSING)
+                .status(status)
                 .receivedAt(Instant.now())
                 .build();
     }
