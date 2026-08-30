@@ -29,6 +29,7 @@ public class IncomingEventAdapterRepository implements IncomingEventRepository {
     }
 
     @Override
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
     public Boolean updateIncomingEventStatus(IncomingEvent incomingEvent) {
         return jpaRepository.updateStatusByExternalEventIdAndChannelType(
             incomingEvent.getExternalEventId(), 

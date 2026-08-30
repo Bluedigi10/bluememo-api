@@ -16,6 +16,13 @@ public class TelegramSendMessageMapper {
         );
     }
 
+    public SendMessage toSendMessage(OutgoingMessage message, String text) {
+        return new SendMessage(
+                message.conversationId(),
+                text
+        );
+    }
+
     public IncomingEvent toIncomingEvent(String externalMessageId, IncomingEventStatus status) {
 
         return IncomingEvent.builder()

@@ -41,10 +41,10 @@ public interface IncomingEventJpaRepository extends JpaRepository<IncomingEventE
 
     @Modifying
     @Query(value = """
-            UPDATE incoming_events e
-            SET e.status = :status
-            WHERE e.channel_type = :channelType
-            AND e.external_event_id = :externalEventId
+            UPDATE incoming_events
+            SET status = :#{#status.name()}
+            WHERE channel_type = :#{#channelType.name()}
+            AND external_event_id = :externalEventId
             """, nativeQuery = true)
     int updateStatusByExternalEventIdAndChannelType(
         @Param("externalEventId") String externalEventId,

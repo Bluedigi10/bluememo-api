@@ -4,7 +4,7 @@ import com.bluedigi.bluememo.messaging.application.port.out.IncomingEventReposit
 import com.bluedigi.bluememo.messaging.application.port.out.SendMessagePort;
 import com.bluedigi.bluememo.messaging.domain.OutgoingMessage;
 
-import lombok.NoArgsConstructor;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
@@ -15,12 +15,12 @@ import com.bluedigi.bluememo.messaging.domain.IncomingEventStatus;
 import com.bluedigi.bluememo.messaging.domain.IncomingMessage;
 
 @Slf4j
-@NoArgsConstructor
+@RequiredArgsConstructor
 @Service
 public class ProcessIncomingMessageService implements ProcessIncomingMessageUseCase {
-    private static SendMessagePort sender;
-    private static IncomingEventRepository eventRepository;
-    private static IncomingMessageMapper mapper;
+    private final SendMessagePort sender;
+    private final IncomingEventRepository eventRepository;
+    private final IncomingMessageMapper mapper;
 
     @Override
     public void process(IncomingMessage message) {

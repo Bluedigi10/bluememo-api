@@ -21,6 +21,7 @@ import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 class SendMessageRouterTest {
+    private static final String EXTERNAL_MESSAGE_ID = "EXTERNAL MESSAGE ID";
     @Mock
     private ChannelMessageSender telegramSender;
 
@@ -46,6 +47,7 @@ class SendMessageRouterTest {
     void shouldRouteMessageToWhatsappSender() {
         OutgoingMessage message = new OutgoingMessage(
                 WHATSAPP,
+                EXTERNAL_MESSAGE_ID,
                 "whatsapp-conversation-id",
                 "Hola desde WhatsApp"
         );
@@ -60,6 +62,7 @@ class SendMessageRouterTest {
     void shouldRouteMessageToTelegramSender() {
         OutgoingMessage message = new OutgoingMessage(
                 TELEGRAM,
+                EXTERNAL_MESSAGE_ID,
                 "telegram-chat-id",
                 "Hola desde Telegram"
         );
@@ -77,6 +80,7 @@ class SendMessageRouterTest {
 
         OutgoingMessage message = new OutgoingMessage(
                 WHATSAPP,
+                EXTERNAL_MESSAGE_ID,
                 "whatsapp-conversation-id",
                 "Hola"
         );
