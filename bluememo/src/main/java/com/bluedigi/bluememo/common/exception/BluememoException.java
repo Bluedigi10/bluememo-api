@@ -1,4 +1,4 @@
-package com.bluedigi.bluememo.shared.exception;
+package com.bluedigi.bluememo.common.exception;
 
 public class BluememoException extends RuntimeException{
     private final Integer statusCode;

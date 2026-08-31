@@ -17,8 +17,8 @@ import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
+import com.bluedigi.bluememo.common.exception.SecurityErrorHandler;
 import com.bluedigi.bluememo.config.properties.CorsProperties;
-import com.bluedigi.bluememo.shared.exception.SecurityErrorHandler;
 
 import jakarta.servlet.DispatcherType;
 
@@ -66,7 +66,7 @@ public class SecurityConfig {
         }
 
         @Bean
-        public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+        public SecurityFilterChain securityFilterChain(HttpSecurity http) {
             return http
                     .csrf(csrf -> csrf.disable())
                     .sessionManagement(session -> session

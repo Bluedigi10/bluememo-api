@@ -1,4 +1,4 @@
-package com.bluedigi.bluememo.shared.exception;
+package com.bluedigi.bluememo.common.exception;
 
 public enum StatusCodeError {
     INTERNAL_SERVER_ERROR(500);

@@ -20,13 +20,13 @@ import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.server.ResponseStatusException;
 
+import com.bluedigi.bluememo.common.infrastructure.security.JwtService;
 import com.bluedigi.bluememo.identity.domain.model.User;
 import com.bluedigi.bluememo.identity.domain.repository.UserRepository;
 import com.bluedigi.bluememo.identity.infrastructure.persistence.mapper.UserMapper;
 import com.bluedigi.bluememo.identity.infrastructure.web.request.LoginUserRequest;
 import com.bluedigi.bluememo.identity.infrastructure.web.request.RegisterUserRequest;
 import com.bluedigi.bluememo.identity.infrastructure.web.response.AuthResponse;
-import com.bluedigi.bluememo.shared.infrastructure.security.JwtService;
 
 @ExtendWith(MockitoExtension.class)
 class AuthServiceTest {

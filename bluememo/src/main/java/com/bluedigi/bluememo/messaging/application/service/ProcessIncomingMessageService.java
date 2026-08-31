@@ -8,6 +8,8 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
+import com.bluedigi.bluememo.common.exception.StatusCodeError;
+import com.bluedigi.bluememo.messaging.application.exception.MessageException;
 import com.bluedigi.bluememo.messaging.application.mapper.IncomingMessageMapper;
 import com.bluedigi.bluememo.messaging.application.port.in.ProcessIncomingMessageUseCase;
 import com.bluedigi.bluememo.messaging.domain.IncomingEvent;
@@ -27,9 +29,7 @@ public class ProcessIncomingMessageService implements ProcessIncomingMessageUseC
 
         String reply = processReply(message.text());
 
-        IncomingEvent updateToProcessed = mapper.incomingMessageToIncomingEvent(message, IncomingEventStatus.PROCESSED);
-
-        eventRepository.updateIncomingEventStatus(updateToProcessed);
+        updateStatus(message, IncomingEventStatus.PROCESSED);
 
         OutgoingMessage toSend = new OutgoingMessage(
                 message.channelType(),
@@ -38,7 +38,18 @@ public class ProcessIncomingMessageService implements ProcessIncomingMessageUseC
                 reply
         );
 
-        sender.send(toSend);
+        try {
+            sender.send(toSend);
+            updateStatus(message, IncomingEventStatus.ANSWERED);
+        } catch (RuntimeException exception) {
+            updateStatus(message, IncomingEventStatus.FAILED);
+            throw new MessageException(StatusCodeError.INTERNAL_SERVER_ERROR.getStatusCode());
+        }
+    }
+
+    private void updateStatus(IncomingMessage message, IncomingEventStatus status) {
+        IncomingEvent updateToProcessed = mapper.incomingMessageToIncomingEvent(message, status);
+        eventRepository.updateIncomingEventStatus(updateToProcessed);
     }
 
     private String processReply(String message) {

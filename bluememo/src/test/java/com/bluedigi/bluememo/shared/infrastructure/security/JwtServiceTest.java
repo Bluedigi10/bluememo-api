@@ -6,6 +6,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.time.Duration;
 import java.util.UUID;
 
 import javax.crypto.SecretKey;
@@ -15,6 +16,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import com.bluedigi.bluememo.common.infrastructure.security.JwtService;
 import com.bluedigi.bluememo.config.properties.JwtProperties;
 import com.bluedigi.bluememo.identity.domain.model.User;
 
@@ -27,7 +29,7 @@ import io.jsonwebtoken.security.Keys;
 class JwtServiceTest {
 
     private static final String JWT_SECRET = "MDEyMzQ1Njc4OTAxMjM0NTY3ODkwMTIzNDU2Nzg5MDE=";
-    private static final long JWT_EXPIRATION_MS = 3_600_000L;
+    private static final Duration JWT_EXPIRATION = Duration.ofMinutes(15);
     private static final String NAME = "David";
     private static final String EMAIL = "david@example.com";
 
@@ -37,7 +39,7 @@ class JwtServiceTest {
     void setUp() {
         JwtProperties jwtProperties = new JwtProperties(
                 JWT_SECRET,
-                JWT_EXPIRATION_MS
+                JWT_EXPIRATION
         );
         jwtService = new JwtService(jwtProperties);
     }
@@ -70,9 +72,11 @@ class JwtServiceTest {
                 () -> assertNotNull(claims.getIssuedAt()),
                 () -> assertNotNull(claims.getExpiration()),
                 () -> assertEquals(
-                        JWT_EXPIRATION_MS,
-                        claims.getExpiration().getTime()
-                                - claims.getIssuedAt().getTime()
+                        JWT_EXPIRATION,
+                        Duration.between(
+                                claims.getIssuedAt().toInstant(),
+                                claims.getExpiration().toInstant()
+                        )
                 ));
 
     }
@@ -192,7 +196,7 @@ class JwtServiceTest {
         // Set expiration to 1 second for testing
         JwtProperties expiredProperties = new JwtProperties(
             JWT_SECRET,
-            -2
+            Duration.ofMinutes(-15)
         );
 
         JwtService expiredJwtService = new JwtService(expiredProperties);

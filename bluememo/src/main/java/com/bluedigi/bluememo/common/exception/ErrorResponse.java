@@ -1,4 +1,4 @@
-package com.bluedigi.bluememo.shared.exception;
+package com.bluedigi.bluememo.common.exception;
 
 import java.time.LocalDateTime;
 

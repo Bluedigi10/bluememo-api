@@ -12,9 +12,9 @@ import org.springframework.security.web.authentication.WebAuthenticationDetailsS
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
+import com.bluedigi.bluememo.common.exception.SecurityErrorHandler;
+import com.bluedigi.bluememo.common.infrastructure.security.JwtService;
 import com.bluedigi.bluememo.identity.application.service.CustomUserService;
-import com.bluedigi.bluememo.shared.exception.SecurityErrorHandler;
-import com.bluedigi.bluememo.shared.infrastructure.security.JwtService;
 
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -24,7 +24,7 @@ import jakarta.servlet.http.HttpServletResponse;
 @Component
 public class JwtAuthenticationFilter extends OncePerRequestFilter  {
 
-    private final Logger logger = LoggerFactory.getLogger(JwtAuthenticationFilter.class);
+    private final Logger log = LoggerFactory.getLogger(JwtAuthenticationFilter.class);
 
     private final JwtService jwtService;
     private final CustomUserService userService;
@@ -38,7 +38,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter  {
 
     @Override
     protected boolean shouldNotFilter(HttpServletRequest request) {
-        logger.trace("Checking if request should be filtered: {}", request.getServletPath());
+        log.trace("Checking if request should be filtered: {}", request.getServletPath());
         String path = request.getServletPath();
         return path.startsWith("/auth/")
                 || path.equals("/webhooks/telegram");
