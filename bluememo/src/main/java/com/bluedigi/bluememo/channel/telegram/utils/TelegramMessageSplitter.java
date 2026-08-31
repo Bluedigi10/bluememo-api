@@ -9,6 +9,7 @@ import org.springframework.stereotype.Component;
 public class TelegramMessageSplitter {
 
     private static final int MAX_LENGTH = 4096;
+    private static final int MAX_SPLIT_DISTANCE = 50;
 
     public List<String> split(String text) {
 
@@ -41,24 +42,22 @@ public class TelegramMessageSplitter {
     }
 
     private int findSplitPosition(String text, int start, int end) {
-        int split = text.lastIndexOf("\n\n", end - 2);
+        int lineBreak = text.lastIndexOf('\n', end - 1);
+        int space = text.lastIndexOf(' ', end - 1);
 
-        if (split > start) {
-            return split + 2;
+        int split = Math.max(lineBreak, space);
+
+        if (split <= start) {
+            return end;
         }
 
-        split = text.lastIndexOf('\n', end - 1);
+        int splitEnd = split + 1;
 
-        if (split > start) {
-            return split + 1;
+        int distanceToLimit =
+                text.codePointCount(splitEnd, end);
+
+        return distanceToLimit <= MAX_SPLIT_DISTANCE
+                ? splitEnd
+                : end;
         }
-
-        split = text.lastIndexOf(' ', end - 1);
-
-        if (split > start) {
-            return split + 1;
-        }
-
-        return end;
-    }
 }

@@ -556,6 +556,86 @@ class TelegramIntegrationTest {
         assertThat(outboundRequest).isNull();
     }
 
+    @Test
+    void shouldSendMessageInMultipleRequestsWhenResponseExceedsTelegramLimit() throws Exception {
+        String longText = "a".repeat(4096);
+    
+        String updateBody = updateBody(root -> {
+            root.put("update_id", 10001);
+            message(root).put("text", longText);
+        });
+
+        server.enqueue(
+                new MockResponse.Builder()
+                        .code(200)
+                        .addHeader("Content-Type", "application/json")
+                        .body(successMessageSendBody("first chunk"))
+                        .build()
+        );
+
+        server.enqueue(
+                new MockResponse.Builder()
+                        .code(200)
+                        .addHeader("Content-Type", "application/json")
+                        .body(successMessageSendBody("second chunk"))
+                        .build()
+        );
+
+        mockMvc.perform(post("/webhooks/telegram")
+                        .header(
+                                TelegramHeader.TELEGRAM_HEADER,
+                                TELEGRAM_WH_SECRET
+                        )
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(updateBody))
+                .andExpect(status().isOk());
+                
+        RecordedRequest firstRequest =
+                server.takeRequest(1, TimeUnit.SECONDS);
+                
+        RecordedRequest secondRequest =
+                server.takeRequest(1, TimeUnit.SECONDS);
+                
+        assertThat(firstRequest).isNotNull();
+        assertThat(secondRequest).isNotNull();
+                
+        assertThat(firstRequest.getMethod()).isEqualTo("POST");
+        assertThat(secondRequest.getMethod()).isEqualTo("POST");
+                
+        assertThat(firstRequest.getUrl().encodedPath())
+                .isEqualTo("/bot" + TELEGRAM_BOT_TOKEN + "/sendMessage");
+                
+        assertThat(secondRequest.getUrl().encodedPath())
+                .isEqualTo("/bot" + TELEGRAM_BOT_TOKEN + "/sendMessage");
+                
+        String firstBody = firstRequest.getBody().utf8();
+        String secondBody = secondRequest.getBody().utf8();
+                
+        ObjectMapper mapper = new ObjectMapper();
+                
+        String firstMessage = mapper.readTree(firstBody)
+                .path("text")
+                .asText();
+                
+        String secondMessage = mapper.readTree(secondBody)
+                .path("text")
+                .asText();
+                
+        assertThat(firstMessage.codePointCount(0, firstMessage.length()))
+                .isLessThanOrEqualTo(4096);
+                
+        assertThat(secondMessage.codePointCount(0, secondMessage.length()))
+                .isLessThanOrEqualTo(4096);
+                
+        assertThat(firstMessage + secondMessage)
+                .isEqualTo("Recibí " + longText);
+                
+        RecordedRequest thirdRequest =
+                server.takeRequest(200, TimeUnit.MILLISECONDS);
+                
+        assertThat(thirdRequest).isNull();
+    }
+
     private ObjectNode validUpdateBody() {
         ObjectMapper mapper = new ObjectMapper();
         
