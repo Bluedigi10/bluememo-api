@@ -25,7 +25,7 @@ public class TelegramWebhookController {
 
     private final TelegramProperties properties;
     private final TelegramUpdateProcess telegramUpdateProcess;
-    
+
     @PostMapping
     public ResponseEntity<Void> receiveWebhook(
             @RequestHeader(value = TelegramHeader.TELEGRAM_HEADER, required = false) String receivedSecret,
@@ -39,5 +39,5 @@ public class TelegramWebhookController {
 
         return ResponseEntity.ok().build();
     }
-    
+
 }
