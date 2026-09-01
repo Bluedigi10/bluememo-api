@@ -7,6 +7,12 @@ public class BluememoException extends RuntimeException{
         this.statusCode = statusCode;
     }
 
+    public BluememoException(String message, Integer statusCode, Throwable cause) {
+        super(message, cause);
+        this.statusCode = statusCode;
+    }
+
+
     public Integer getStatusCode() {
         return statusCode;
     }

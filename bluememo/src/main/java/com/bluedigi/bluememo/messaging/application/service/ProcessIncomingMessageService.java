@@ -43,7 +43,7 @@ public class ProcessIncomingMessageService implements ProcessIncomingMessageUseC
             updateStatus(message, IncomingEventStatus.ANSWERED);
         } catch (RuntimeException exception) {
             updateStatus(message, IncomingEventStatus.FAILED);
-            throw new MessageException(StatusCodeError.INTERNAL_SERVER_ERROR.getStatusCode());
+            throw new MessageException(StatusCodeError.INTERNAL_SERVER_ERROR.getStatusCode(), exception);
         }
     }
 

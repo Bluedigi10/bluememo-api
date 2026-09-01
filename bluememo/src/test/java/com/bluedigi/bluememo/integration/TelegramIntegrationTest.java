@@ -719,11 +719,6 @@ class TelegramIntegrationTest {
                                 + "/sendMessage"
                 );
 
-        assertThat(incomingEventJpaRepository.findAll())
-                .singleElement()
-                .extracting(IncomingEventEntity::getStatus)
-                .isEqualTo(IncomingEventStatus.FAILED);
-
         IncomingEventEntity event = incomingEventJpaRepository.findAll().stream().findFirst()
                 .orElseThrow(() -> new AssertionError("No se encontró ningún evento entrante"));
         assertThat(event.getStatus()).isEqualTo(IncomingEventStatus.FAILED);

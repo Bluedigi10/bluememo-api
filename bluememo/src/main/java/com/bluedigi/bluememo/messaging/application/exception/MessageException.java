@@ -7,4 +7,12 @@ public class MessageException extends BluememoException {
     public MessageException(Integer statusCode) {
         super("Error al procesar/enviar el mensaje", statusCode);
     }
+
+    public MessageException(Integer statusCode, Throwable cause) {
+        super(
+                "Error al procesar/enviar el mensaje",
+                statusCode,
+                cause
+        );
+    }
 }

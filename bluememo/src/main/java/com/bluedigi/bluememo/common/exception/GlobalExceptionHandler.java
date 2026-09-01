@@ -41,6 +41,11 @@ public class GlobalExceptionHandler {
             BluememoException exception,
             HttpServletRequest request
     ) {
+        log.error(
+                "Application error processing request: {}",
+                request.getRequestURI(),
+                exception
+        );
         return buildResponse(
                 exception.getMessage(),
                 HttpStatus.valueOf(exception.getStatusCode()),
