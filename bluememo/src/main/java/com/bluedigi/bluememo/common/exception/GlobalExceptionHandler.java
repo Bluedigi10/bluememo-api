@@ -1,6 +1,6 @@
-package com.bluedigi.bluememo.shared.exception;
+package com.bluedigi.bluememo.common.exception;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
@@ -41,6 +41,11 @@ public class GlobalExceptionHandler {
             BluememoException exception,
             HttpServletRequest request
     ) {
+        log.error(
+                "Application error processing request: {}",
+                request.getRequestURI(),
+                exception
+        );
         return buildResponse(
                 exception.getMessage(),
                 HttpStatus.valueOf(exception.getStatusCode()),
@@ -136,7 +141,7 @@ public class GlobalExceptionHandler {
                 message,
                 status.value(),
                 path,
-                LocalDateTime.now()
+                Instant.now()
         );
 
         return ResponseEntity.status(status).body(errorResponse);

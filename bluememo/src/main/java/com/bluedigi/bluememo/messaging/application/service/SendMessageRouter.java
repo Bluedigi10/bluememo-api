@@ -1,7 +1,7 @@
 package com.bluedigi.bluememo.messaging.application.service;
 
+import com.bluedigi.bluememo.common.exception.StatusCodeError;
 import com.bluedigi.bluememo.messaging.application.exception.MessageChannelNotConfiguredException;
-import com.bluedigi.bluememo.shared.exception.StatusCodeError;
 import com.bluedigi.bluememo.messaging.application.port.out.ChannelMessageSender;
 import com.bluedigi.bluememo.messaging.application.port.out.SendMessagePort;
 import com.bluedigi.bluememo.messaging.domain.ChannelType;

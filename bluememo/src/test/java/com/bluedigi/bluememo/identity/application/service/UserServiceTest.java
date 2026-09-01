@@ -35,7 +35,7 @@ import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
-public class UserServiceTest {
+class UserServiceTest {
 
     private static final String NAME = "David";
     private static final String EMAIL = "david@example.com";
@@ -74,11 +74,12 @@ public class UserServiceTest {
     @Test
     void getUserByIdSuccess() {
         UUID userId = UUID.randomUUID();
+        String userIdString = userId.toString();
         User user = createUser(userId);
 
         when(userRepository.findById(userId)).thenReturn(Optional.of(user));
 
-        UserResponse response = userService.getUserById(userId.toString());
+        UserResponse response = userService.getUserById(userIdString);
 
         assertAll(
                 () -> assertEquals(NAME, response.name()),
@@ -96,12 +97,13 @@ public class UserServiceTest {
     @Test
     void getUserByIdErrorUserNotFound() {
         UUID userId = UUID.randomUUID();
+        String userIdString = userId.toString();
 
         when(userRepository.findById(userId)).thenReturn(Optional.empty());
 
         ResponseStatusException exception = assertThrows(
                 ResponseStatusException.class,
-                () -> userService.getUserById(userId.toString())
+                () -> userService.getUserById(userIdString)
         );
 
         assertStatusException(exception, HttpStatus.NOT_FOUND, "User not found");
@@ -111,13 +113,14 @@ public class UserServiceTest {
     @Test
     void deleteUserByIdSuccess() {
         UUID userId = UUID.randomUUID();
+        String userIdString = userId.toString();
         User user = createUser(userId);
         DeleteUserRequest request = new DeleteUserRequest(RAW_PASSWORD);
 
         when(userRepository.findById(userId)).thenReturn(Optional.of(user));
         when(passwordEncoder.matches(RAW_PASSWORD, ENCODED_PASSWORD)).thenReturn(true);
 
-        userService.deleteUserById(userId.toString(), request);
+        userService.deleteUserById(userIdString, request);
 
         verify(passwordEncoder).matches(RAW_PASSWORD, ENCODED_PASSWORD);
 
@@ -129,13 +132,14 @@ public class UserServiceTest {
     @Test
     void deleteUserByIdErrorUserNotFound() {
         UUID userId = UUID.randomUUID();
+        String userIdString = userId.toString();
         DeleteUserRequest request = new DeleteUserRequest(RAW_PASSWORD);
 
         when(userRepository.findById(userId)).thenReturn(Optional.empty());
 
         ResponseStatusException exception = assertThrows(
                 ResponseStatusException.class,
-                () -> userService.deleteUserById(userId.toString(), request)
+                () -> userService.deleteUserById(userIdString, request)
         );
 
         assertStatusException(exception, HttpStatus.NOT_FOUND, "User not found");
@@ -147,6 +151,7 @@ public class UserServiceTest {
     void deleteUserByIdErrorPasswordIncorrect() {
         UUID userId = UUID.randomUUID();
         User user = createUser(userId);
+        String userIdString = userId.toString();
         DeleteUserRequest request = new DeleteUserRequest("incorrect-password");
 
         when(userRepository.findById(userId)).thenReturn(Optional.of(user));
@@ -154,7 +159,7 @@ public class UserServiceTest {
 
         ResponseStatusException exception = assertThrows(
                 ResponseStatusException.class,
-                () -> userService.deleteUserById(userId.toString(), request)
+                () -> userService.deleteUserById(userIdString, request)
         );
 
         assertStatusException(exception, HttpStatus.UNAUTHORIZED, "Invalid password");
@@ -166,6 +171,7 @@ public class UserServiceTest {
     void updateUserAllFields() {
         UUID userId = UUID.randomUUID();
         User user = createUser(userId);
+        String userIdString = userId.toString();
         LocalDate newBirthdate = LocalDate.of(1999, 5, 20);
         UpdateUserRequest request = new UpdateUserRequest(
                 "David Martinez",
@@ -184,7 +190,7 @@ public class UserServiceTest {
         when(userRepository.update(any(User.class)))
                 .thenAnswer(invocation -> invocation.getArgument(0));
 
-        UserResponse response = userService.updateUser(userId.toString(), request);
+        UserResponse response = userService.updateUser(userIdString, request);
 
         ArgumentCaptor<User> userCaptor = ArgumentCaptor.forClass(User.class);
         verify(userRepository).update(userCaptor.capture());
@@ -211,6 +217,7 @@ public class UserServiceTest {
     void updateUserOnlyNameUpdated() {
         UUID userId = UUID.randomUUID();
         User user = createUser(userId);
+        String userIdString = userId.toString();
         UpdateUserRequest request = new UpdateUserRequest(
                 "David Martinez",
                 null,
@@ -225,7 +232,7 @@ public class UserServiceTest {
         when(userRepository.update(any(User.class)))
                 .thenAnswer(invocation -> invocation.getArgument(0));
 
-        UserResponse response = userService.updateUser(userId.toString(), request);
+        UserResponse response = userService.updateUser(userIdString, request);
 
         assertAll(
                 () -> assertEquals(request.name(), response.name()),
@@ -243,6 +250,7 @@ public class UserServiceTest {
     @Test
     void updateUserPhoneAndEmailAreTheSame() {
         UUID userId = UUID.randomUUID();
+        String userIdString = userId.toString();
         User user = createUser(userId);
         UpdateUserRequest request = new UpdateUserRequest(
                 null,
@@ -258,7 +266,7 @@ public class UserServiceTest {
         when(userRepository.update(any(User.class)))
                 .thenAnswer(invocation -> invocation.getArgument(0));
 
-        UserResponse response = userService.updateUser(userId.toString(), request);
+        UserResponse response = userService.updateUser(userIdString, request);
 
         assertAll(
                 () -> assertEquals(EMAIL.toUpperCase(), response.email()),
@@ -272,13 +280,14 @@ public class UserServiceTest {
     @Test
     void updateUserErrorUserNotFound() {
         UUID userId = UUID.randomUUID();
+        String userIdString = userId.toString();
         UpdateUserRequest request = updateNameRequest();
 
         when(userRepository.findById(userId)).thenReturn(Optional.empty());
 
         ResponseStatusException exception = assertThrows(
                 ResponseStatusException.class,
-                () -> userService.updateUser(userId.toString(), request)
+                () -> userService.updateUser(userIdString, request)
         );
 
         assertStatusException(exception, HttpStatus.NOT_FOUND, "User not found");
@@ -290,6 +299,7 @@ public class UserServiceTest {
     void updateUserErrorPasswordIncorrect() {
         UUID userId = UUID.randomUUID();
         User user = createUser(userId);
+        String userIdString = userId.toString();
         UpdateUserRequest request = updateNameRequest();
 
         when(userRepository.findById(userId)).thenReturn(Optional.of(user));
@@ -297,7 +307,7 @@ public class UserServiceTest {
 
         ResponseStatusException exception = assertThrows(
                 ResponseStatusException.class,
-                () -> userService.updateUser(userId.toString(), request)
+                () -> userService.updateUser(userIdString, request)
         );
 
         assertStatusException(exception, HttpStatus.UNAUTHORIZED, "Invalid credentials");
@@ -308,6 +318,7 @@ public class UserServiceTest {
     void updateUserErrorEmailAlreadyExists() {
         UUID userId = UUID.randomUUID();
         User user = createUser(userId);
+        String userIdString = userId.toString();
         UpdateUserRequest request = new UpdateUserRequest(
                 null,
                 "existing@example.com",
@@ -323,7 +334,7 @@ public class UserServiceTest {
 
         ResponseStatusException exception = assertThrows(
                 ResponseStatusException.class,
-                () -> userService.updateUser(userId.toString(), request)
+                () -> userService.updateUser(userIdString, request)
         );
 
         assertStatusException(exception, HttpStatus.CONFLICT, "Email already exists");
@@ -335,6 +346,7 @@ public class UserServiceTest {
     void updateUserErrorPhoneAlreadyExists() {
         UUID userId = UUID.randomUUID();
         User user = createUser(userId);
+        String userIdString = userId.toString();
         UpdateUserRequest request = new UpdateUserRequest(
                 null,
                 null,
@@ -350,7 +362,7 @@ public class UserServiceTest {
 
         ResponseStatusException exception = assertThrows(
                 ResponseStatusException.class,
-                () -> userService.updateUser(userId.toString(), request)
+                () -> userService.updateUser(userIdString, request)
         );
 
         assertStatusException(exception, HttpStatus.CONFLICT, "Phone already exists");

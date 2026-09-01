@@ -1,5 +1,6 @@
-package com.bluedigi.bluememo.shared.infrastructure.security;
+package com.bluedigi.bluememo.common.infrastructure.security;
 
+import java.time.Instant;
 import java.util.Date;
 
 import javax.crypto.SecretKey;
@@ -26,15 +27,15 @@ public class JwtService {
     }
 
     public String generateToken(User user) {
-        Date now = new Date();
-        Date expiration = new Date(now.getTime() + jwtProperties.expirationMs());
+        Instant now = Instant.now();
+        Instant expiration = now.plus(jwtProperties.expirationMs());
 
         return Jwts.builder()
                 .subject(user.getId().toString())
                 .claim("name", user.getName())
                 .claim("email", user.getEmail())
-                .issuedAt(now)
-                .expiration(expiration)
+                .issuedAt(Date.from(now))
+                .expiration(Date.from(expiration))
                 .signWith(getSigningKey())
                 .compact();
     }

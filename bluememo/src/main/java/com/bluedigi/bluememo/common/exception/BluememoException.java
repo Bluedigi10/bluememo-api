@@ -1,6 +1,4 @@
-package com.bluedigi.bluememo.shared.exception;
-
-import org.springframework.http.HttpStatus;
+package com.bluedigi.bluememo.common.exception;
 
 public class BluememoException extends RuntimeException{
     private final Integer statusCode;
@@ -8,6 +6,12 @@ public class BluememoException extends RuntimeException{
         super(message);
         this.statusCode = statusCode;
     }
+
+    public BluememoException(String message, Integer statusCode, Throwable cause) {
+        super(message, cause);
+        this.statusCode = statusCode;
+    }
+
 
     public Integer getStatusCode() {
         return statusCode;

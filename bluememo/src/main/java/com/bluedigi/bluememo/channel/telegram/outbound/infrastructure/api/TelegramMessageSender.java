@@ -5,22 +5,25 @@ import com.bluedigi.bluememo.channel.telegram.outbound.infrastructure.api.dto.re
 import com.bluedigi.bluememo.channel.telegram.outbound.infrastructure.api.dto.response.SendMessageResponse;
 import com.bluedigi.bluememo.channel.telegram.outbound.infrastructure.api.dto.response.TelegramApiResponse;
 import com.bluedigi.bluememo.channel.telegram.outbound.infrastructure.api.mapper.TelegramSendMessageMapper;
+import com.bluedigi.bluememo.channel.telegram.utils.TelegramMessageSplitter;
 import com.bluedigi.bluememo.messaging.application.port.out.ChannelMessageSender;
 import com.bluedigi.bluememo.messaging.domain.ChannelType;
 import com.bluedigi.bluememo.messaging.domain.OutgoingMessage;
+
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+
+import java.util.List;
+
 import org.springframework.stereotype.Service;
 
 @Slf4j
+@RequiredArgsConstructor
 @Service
 public class TelegramMessageSender implements ChannelMessageSender {
     private final TelegramSendMessageMapper telegramSendMessageMapper;
     private final TelegramApiClient telegramApiClient;
-
-    public TelegramMessageSender(TelegramSendMessageMapper telegramSendMessageMapper, TelegramApiClient telegramApiClient) {
-        this.telegramSendMessageMapper = telegramSendMessageMapper;
-        this.telegramApiClient = telegramApiClient;
-    }
+    private final TelegramMessageSplitter splitter;
 
 
     @Override
@@ -30,8 +33,33 @@ public class TelegramMessageSender implements ChannelMessageSender {
 
     @Override
     public void send(OutgoingMessage message) {
-        SendMessage request = telegramSendMessageMapper.toSendMessage(message);
-        TelegramApiResponse<SendMessageResponse> response = telegramApiClient.sendMessage(request);
+
+        List<String> messages = splitter.split(message.text());
+
+        for (int index = 0; index < messages.size(); index++) {
+            String text = messages.get(index);
+
+            try {
+                SendMessage request = telegramSendMessageMapper.toSendMessage(message, text);
+
+                TelegramApiResponse<SendMessageResponse> response = telegramApiClient.sendMessage(request);
+
+                validateResponse(response);
+            } catch (RuntimeException exception) {
+                throw new TelegramApiException(
+                        "Failed Telegram fragment %d/%d for chatId=%s"
+                                .formatted(
+                                        index + 1,
+                                        messages.size(),
+                                        message.conversationId()
+                                ),
+                        exception
+                );
+            }
+        }
+    }
+
+    private void validateResponse(TelegramApiResponse<SendMessageResponse> response) {
         if (response == null || !response.ok()) {
             String messageError = response != null && response.description() != null
                     ? response.description()
