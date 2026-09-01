@@ -34,7 +34,8 @@ public class IncomingEventAdapterRepository implements IncomingEventRepository {
         return jpaRepository.updateStatusByExternalEventIdAndChannelType(
             incomingEvent.getExternalEventId(), 
             incomingEvent.getChannelType(), 
-            incomingEvent.getStatus()) == 1;
+            incomingEvent.getStatus(),
+            incomingEvent.getProcessedAt()) == 1;
     }
     
 }

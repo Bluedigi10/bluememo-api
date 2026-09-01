@@ -1,5 +1,7 @@
 package com.bluedigi.bluememo.messaging.application.mapper;
 
+import java.time.Instant;
+
 import org.springframework.stereotype.Component;
 
 import com.bluedigi.bluememo.messaging.domain.IncomingEvent;
@@ -13,6 +15,7 @@ public class IncomingMessageMapper {
             .channelType(message.channelType())
             .externalEventId(message.externalMessageId())
             .status(status)
+            .processedAt(status == IncomingEventStatus.PROCESSED ? Instant.now() : null)
             .build();
     }
 }

@@ -1,8 +1,13 @@
 # BlueMemo API
 
-BlueMemo is the backend for a personal conversational assistant. The current implementation provides identity and task management together with the first messaging-channel delivery, **BM-01: Telegram inbound and outbound messaging**.
+BlueMemo is the backend for a personal conversational assistant. The current implementation provides identity and task management together with the first Telegram messaging deliveries:
+
+- **BM-01 — Telegram inbound and outbound messaging**
+- **BM-02 — Telegram reliability**
 
 BM-01 receives Telegram updates through a protected webhook, converts supported messages into a channel-independent model, processes them, routes the response to the correct channel, and sends the reply through the Telegram Bot API.
+
+BM-02 adds persistent idempotency for inbound Telegram updates and safe fragmentation for outbound messages that exceed Telegram's message-size limit.
 
 ## Current Scope
 
@@ -31,6 +36,22 @@ BM-01 receives Telegram updates through a protected webhook, converts supported 
 - Integration tests with MockMvc and MockWebServer
 - Router tests for Telegram, WhatsApp, and unconfigured channels
 
+### BM-02 — Telegram Reliability
+
+- Persistent inbound-event registration in PostgreSQL
+- Idempotency by `(channel_type, external_event_id)`
+- Atomic duplicate protection through a database unique constraint and `ON CONFLICT DO NOTHING`
+- Incoming-event lifecycle tracking
+- Telegram message fragmentation above 4096 Unicode code points
+- Unicode code-point-aware splitting
+- Natural split points using line breaks and spaces
+- Maximum natural-split distance of 50 code points from the Telegram limit
+- Ordered sequential delivery of fragments
+- Same `chat_id` preserved across all fragments
+- Stop-on-failure behavior for partial fragment delivery
+- Failed outbound delivery recorded with `FAILED` event status
+- Retention policy defined for `incoming_events`
+
 WhatsApp is represented as a channel type to validate the routing abstraction, but it does not have an adapter yet.
 
 ## Architecture
@@ -41,11 +62,13 @@ The messaging flow separates Telegram-specific infrastructure from the shared ap
 flowchart TD
     Telegram["Telegram Bot API"] --> Controller["TelegramWebhookController"]
     Controller --> UpdateProcess["TelegramUpdateProcess"]
+    UpdateProcess --> EventRepository["IncomingEventRepository"]
     UpdateProcess --> Mapper["TelegramUpdateMapper"]
     Mapper --> UseCase["ProcessIncomingMessageUseCase"]
     UseCase --> Router["SendMessageRouter"]
     Router --> Sender["TelegramMessageSender"]
-    Sender --> Client["TelegramApiClient"]
+    Sender --> Splitter["TelegramMessageSplitter"]
+    Splitter --> Client["TelegramApiClient"]
     Client --> Telegram
 ```
 
@@ -54,18 +77,20 @@ Responsibilities:
 | Component | Responsibility |
 | --- | --- |
 | `TelegramWebhookController` | Validates the webhook secret and acknowledges the request |
-| `TelegramUpdateProcess` | Rejects unsupported or incomplete updates before mapping |
-| `TelegramUpdateMapper` | Converts a valid Telegram message into `IncomingMessage` |
-| `ProcessIncomingMessageService` | Applies the current message and command behavior |
+| `TelegramUpdateProcess` | Rejects unsupported updates, registers incoming events, and prevents duplicate processing |
+| `TelegramUpdateMapper` | Converts valid Telegram updates into channel-independent messages and incoming events |
+| `IncomingEventRepository` | Persists incoming-event idempotency records and updates processing status |
+| `ProcessIncomingMessageService` | Applies the current message/command behavior and updates processing status |
 | `SendMessageRouter` | Selects a `ChannelMessageSender` by `ChannelType` |
-| `TelegramMessageSender` | Maps the generic response and validates the Telegram API result |
+| `TelegramMessageSender` | Splits large responses, preserves fragment ordering, maps requests, and validates Telegram responses |
+| `TelegramMessageSplitter` | Splits Telegram responses without exceeding 4096 Unicode code points |
 | `TelegramApiClient` | Executes `POST /sendMessage` through a configured `RestClient` |
 
 ## Telegram Behavior
 
 ### Supported input
 
-BM-01 processes new Telegram updates containing a valid `message` with:
+BlueMemo processes Telegram updates containing a valid `message` with:
 
 - `update_id`
 - `message.message_id`
@@ -99,13 +124,208 @@ The webhook returns `200 OK` without calling Telegram when:
 
 Returning `200` acknowledges updates that BlueMemo intentionally does not process and prevents unnecessary Telegram retries.
 
+### Idempotency
+
+Every supported Telegram update is registered in `incoming_events` before its message is processed.
+
+The idempotency key is composed of:
+
+- `channel_type`
+- `external_event_id`
+
+For Telegram, `external_event_id` corresponds to Telegram's `update_id`.
+
+The database enforces uniqueness through:
+
+```text
+(channel_type, external_event_id)
+```
+
+The insert operation uses:
+
+```sql
+ON CONFLICT (channel_type, external_event_id) DO NOTHING
+```
+
+This means duplicate detection is resolved atomically by PostgreSQL instead of relying on application-local memory.
+
+When an update with the same idempotency key is received again:
+
+- the webhook still acknowledges the request;
+- no second `incoming_events` row is inserted;
+- the message-processing use case is not executed again;
+- no duplicate Telegram response is sent.
+
+Because the idempotency record is persistent, duplicate protection survives application restarts and works across application instances that share the same database.
+
+Idempotency prevents duplicate processing of a Telegram update, but it does not provide an exactly-once delivery guarantee across PostgreSQL and the Telegram Bot API because both systems do not participate in a single distributed transaction.
+
+### Incoming-event lifecycle
+
+Incoming Telegram events use the following statuses:
+
+```text
+RECEIVED
+   ↓
+PROCESSING
+   ↓
+PROCESSED
+   ↓
+ANSWERED
+```
+
+The stages represent:
+
+| Status | Meaning |
+| --- | --- |
+| `RECEIVED` | The supported Telegram update was accepted and registered |
+| `PROCESSING` | The update passed idempotency validation and processing started |
+| `PROCESSED` | BlueMemo generated the outbound response |
+| `ANSWERED` | Telegram accepted the complete outbound response |
+| `FAILED` | Outbound processing or delivery failed |
+
+If outbound delivery fails, the event is moved to `FAILED`.
+
+### Incoming-event retention
+
+`incoming_events` exists to support duplicate detection and operational traceability. It is not intended to grow indefinitely.
+
+The current retention policy is:
+
+- incoming-event records are retained for **30 days** from `received_at`;
+- records older than the retention period are eligible for deletion;
+- message text is not stored in the idempotency record;
+- `received_at` is indexed to support efficient age-based cleanup.
+
+BM-02 defines the retention policy but does not currently execute automatic scheduled cleanup. Until a cleanup mechanism is introduced, records remain in PostgreSQL and must be pruned operationally when required.
+
+Deleting an incoming-event record also removes its idempotency history. If Telegram delivered the same `update_id` again after its record had been deleted, BlueMemo would treat it as a new event.
+
+### Telegram message fragmentation
+
+Telegram outbound text is limited to 4096 Unicode code points per message.
+
+This constraint belongs to the Telegram adapter and does not leak into the channel-independent messaging domain.
+
+Responses containing 4096 code points or fewer are sent unchanged.
+
+Responses above the limit are divided into ordered fragments. Every generated fragment contains at most:
+
+```text
+4096 Unicode code points
+```
+
+The splitter uses:
+
+- `String.codePointCount(...)`
+- `String.offsetByCodePoints(...)`
+
+instead of relying on Java `String.length()`. This prevents a UTF-16 surrogate pair, such as an emoji represented by two Java `char` values, from being cut between fragments.
+
+#### Natural split points
+
+Before performing a hard split at the 4096-code-point boundary, the splitter searches backwards for the nearest:
+
+- line break (`\n`);
+- space (` `).
+
+The separator closest to the limit is selected.
+
+A natural split point is only used when it is at most **50 code points** away from the 4096-code-point boundary.
+
+For example:
+
+```text
+separator at 4090 → natural split
+separator at 4060 → natural split
+separator at 4000 → hard split at 4096
+```
+
+If no valid separator is found within the 50-code-point threshold, BlueMemo performs a hard split at exactly 4096 code points.
+
+Double line breaks do not require a separate rule. Since the splitter searches for the last `\n`, a `\n\n` sequence is preserved when its second line break is chosen as the split point.
+
+#### Content preservation
+
+The selected separator remains in the first fragment.
+
+For example:
+
+```text
+Original:
+Hello world\n\nNext paragraph
+
+Fragments:
+1. "Hello world\n\n"
+2. "Next paragraph"
+```
+
+Fragmentation does not intentionally insert or remove characters.
+
+The following invariant is expected to hold:
+
+```java
+String.join("", splitter.split(original)).equals(original)
+```
+
+### Fragment delivery
+
+All fragments generated from the same `OutgoingMessage`:
+
+- use the same `chat_id`;
+- are sent sequentially;
+- preserve their original order;
+- are validated independently against the Telegram API response.
+
+The flow is:
+
+```text
+OutgoingMessage
+      ↓
+TelegramMessageSplitter
+      ↓
+fragment 1 → Telegram
+      ↓
+fragment 2 → Telegram
+      ↓
+fragment N → Telegram
+```
+
+The next fragment is only sent after the previous Telegram request succeeds.
+
+### Partial fragment failure
+
+Fragment delivery is ordered but not transactional.
+
+If a response generates three fragments:
+
+```text
+fragment 1 → success
+fragment 2 → failure
+fragment 3 → not sent
+```
+
+BlueMemo stops immediately when the failed fragment raises an outbound error.
+
+Consequences:
+
+- previously accepted fragments are not rolled back;
+- the failed fragment interrupts the remaining delivery;
+- subsequent fragments are not sent;
+- the incoming event is marked as `FAILED`;
+- the client may have received only the fragments preceding the failure.
+
+BlueMemo currently does not retry individual fragments automatically.
+
 ### Error behavior
 
 | Situation | Result |
 | --- | --- |
 | Missing or incorrect webhook secret | `401 Unauthorized` |
 | Unsupported or incomplete update | `200 OK`, no outbound request |
+| Duplicate Telegram update | Acknowledged, no duplicate processing or outbound response |
 | Telegram API error or invalid response | `500 Internal Server Error` |
+| Intermediate fragment failure | Remaining fragments are not sent and event status becomes `FAILED` |
 
 ## Tech Stack
 
@@ -114,12 +334,17 @@ Returning `200` acknowledges updates that BlueMemo intentionally does not proces
 - Spring Web MVC and `RestClient`
 - Spring Security
 - Spring Data JPA / Hibernate
-- PostgreSQL 17 and H2 for tests
+- PostgreSQL 17
 - Flyway
 - JJWT 0.13.0
 - Springdoc OpenAPI 3.0.3
 - Maven Wrapper
-- JUnit, Mockito, MockMvc, MockWebServer, and JaCoCo
+- JUnit
+- Mockito
+- MockMvc
+- MockWebServer
+- Testcontainers with PostgreSQL
+- JaCoCo
 - Docker and Docker Compose
 
 ## Project Structure
@@ -132,15 +357,18 @@ bluememo-api/
     ├── src/main/java/com/bluedigi/bluememo/
     │   ├── channel/telegram/
     │   │   ├── config/                    # Telegram properties and RestClient
-    │   │   ├── inbound/infrastructure/    # Webhook, validation, DTO, and mapper
-    │   │   └── outbound/infrastructure/   # Bot API client and sender
+    │   │   ├── inbound/infrastructure/    # Webhook, validation, DTO, mapper
+    │   │   ├── outbound/infrastructure/   # Bot API client and sender
+    │   │   ├── exception/                 # Telegram-specific errors
+    │   │   └── utils/                     # Telegram message fragmentation
     │   ├── messaging/
-    │   │   ├── application/               # Use cases, ports, and channel router
-    │   │   └── domain/                    # Generic channel message models
+    │   │   ├── application/               # Use cases, services, ports, router
+    │   │   ├── domain/                    # Generic messages and event models
+    │   │   └── infrastructure/            # Incoming-event PostgreSQL persistence
     │   ├── identity/                      # Authentication and users
     │   ├── todo/                          # Task management
-    │   ├── config/                        # Security, JWT filter, CORS, and OpenAPI
-    │   └── shared/                        # Shared security and error handling
+    │   ├── config/                        # Security, JWT filter, CORS, OpenAPI
+    │   └── common/                        # Shared application infrastructure
     ├── src/main/resources/
     │   ├── db/migration/                  # Versioned Flyway migrations
     │   └── application-*.properties       # Environment profiles
@@ -163,6 +391,10 @@ For direct execution:
 
 - JDK 17
 - PostgreSQL
+
+For integration tests:
+
+- Docker must be available for PostgreSQL Testcontainers
 
 The Maven Wrapper is included, so a separate Maven installation is not required.
 
@@ -215,7 +447,7 @@ The `.env` file is ignored by Git.
 | `local` | PostgreSQL with local defaults or overrides | Local development and Docker Compose |
 | `qa` | PostgreSQL configured through environment variables | Quality assurance |
 | `prod` | PostgreSQL configured through environment variables | Production |
-| `test` | H2 in PostgreSQL compatibility mode | Automated tests |
+| `test` | PostgreSQL Testcontainer | Automated integration tests |
 
 Flyway applies pending migrations before Hibernate validates the schema. Do not edit migrations that have already been applied; add a new version instead.
 
@@ -290,7 +522,7 @@ For direct Maven execution, use `http://localhost:8080` instead. Copy the genera
 
 ## Registering the Telegram Webhook
 
-Use the development bot for local BM-01 testing.
+Use the development bot for local Telegram testing.
 
 ### Linux or macOS
 
@@ -418,7 +650,9 @@ Application errors use:
 
 ## Testing and Coverage
 
-Run the complete verification from `bluememo/`:
+Run the complete verification from `bluememo/`.
+
+Docker must be available because integration tests use PostgreSQL through Testcontainers.
 
 ### Windows PowerShell
 
@@ -432,7 +666,7 @@ Run the complete verification from `bluememo/`:
 ./mvnw clean verify
 ```
 
-The BM-01 test suite covers:
+The Telegram test suite covers the core inbound/outbound flow and BM-02 reliability behavior, including:
 
 - Valid end-to-end Telegram message flow
 - Incorrect webhook secret
@@ -443,8 +677,15 @@ The BM-01 test suite covers:
 - Telegram API error and empty-response handling
 - Routing to Telegram and WhatsApp senders
 - Missing channel configuration
+- Persistent duplicate-event protection
+- Telegram message splitting above 4096 code points
+- Boundary behavior at the 4096-code-point limit
+- Unicode supplementary characters such as emoji
+- Natural splitting on line breaks and spaces
+- Preservation of original message content after fragmentation
+- Multiple outbound requests for fragmented responses
 
-Tests use the `test` profile, H2, MockMvc, and MockWebServer. No real Telegram call is made during automated tests.
+Integration tests use MockMvc, MockWebServer, and PostgreSQL Testcontainers. No real Telegram call is made during automated tests.
 
 The JaCoCo report is generated at:
 
@@ -495,4 +736,24 @@ BM-01 is complete when:
 - The message crosses the generic messaging use case and router
 - Telegram receives the reply in the same chat
 - Unsupported or incomplete updates are acknowledged without outbound calls
+- The complete Maven verification passes in CI
+
+## BM-02 Completion Criteria
+
+BM-02 is complete when:
+
+- A Telegram update is persisted before message processing
+- Repeated delivery of the same `(channel_type, external_event_id)` is not processed twice
+- Concurrent duplicate inserts are resolved atomically by PostgreSQL
+- Incoming-event status reflects the processing lifecycle
+- Responses of 4096 code points or fewer are sent unchanged
+- Responses above 4096 code points are fragmented into valid Telegram requests
+- Fragment boundaries do not split UTF-16 surrogate pairs
+- Natural split points are preferred when they are within 50 code points of the Telegram boundary
+- Fragmentation preserves the complete original outbound content
+- Every fragment uses the same `chat_id`
+- Fragments are sent sequentially and in order
+- A failed intermediate fragment prevents subsequent fragments from being sent
+- A partial outbound failure leaves the incoming event in `FAILED`
+- The retention policy for `incoming_events` is documented
 - The complete Maven verification passes in CI

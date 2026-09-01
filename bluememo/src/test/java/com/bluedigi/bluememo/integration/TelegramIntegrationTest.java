@@ -1,7 +1,9 @@
 package com.bluedigi.bluememo.integration;
 
 import com.bluedigi.bluememo.channel.telegram.outbound.infrastructure.api.dto.TelegramHeader;
+import com.bluedigi.bluememo.messaging.domain.IncomingEventStatus;
 import com.bluedigi.bluememo.messaging.domain.MessageConstants;
+import com.bluedigi.bluememo.messaging.infrastructure.persistence.entity.IncomingEventEntity;
 import com.bluedigi.bluememo.messaging.infrastructure.persistence.repository.IncomingEventJpaRepository;
 import com.bluedigi.bluememo.testsupport.IntegrationTest;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -108,6 +110,14 @@ class TelegramIntegrationTest {
         assertThat(request.getUrl().encodedPath()).isEqualTo("/bot" + TELEGRAM_BOT_TOKEN + "/sendMessage");
         assertThat(request.getBody()).isNotNull();
         assertThat(request.getBody().utf8()).contains("Recibí " + TEXT_MESSAGE);
+        IncomingEventEntity event = incomingEventJpaRepository.findAll().stream().findFirst()
+                .orElseThrow(() -> new AssertionError("No se encontró ningún evento entrante"));
+
+        assertThat(event.getStatus()).isEqualTo(IncomingEventStatus.ANSWERED);
+
+        assertThat(event.getProcessedAt()).isNotNull();
+
+        assertThat(event.getProcessedAt()).isAfterOrEqualTo(event.getReceivedAt());
     }
 
     @Test
@@ -634,6 +644,90 @@ class TelegramIntegrationTest {
                 server.takeRequest(200, TimeUnit.MILLISECONDS);
                 
         assertThat(thirdRequest).isNull();
+
+        String firstChatId = mapper.readTree(firstBody)
+                .path("chat_id")
+                .asText();
+
+        String secondChatId = mapper.readTree(secondBody)
+                .path("chat_id")
+                .asText();
+
+        assertThat(firstChatId)
+                .isEqualTo(secondChatId)
+                .isEqualTo("1235");
+    }
+
+    @Test
+    void shouldStopSendingRemainingChunksAndMarkEventAsFailedWhenChunkFails() throws Exception {
+        String longText = "a".repeat(8192);
+
+        String updateBody = updateBody(root -> {
+            root.put("update_id", 10002);
+            message(root).put("text", longText);
+        });
+
+        server.enqueue(
+                new MockResponse.Builder()
+                        .code(200)
+                        .addHeader("Content-Type", "application/json")
+                        .body(successMessageSendBody("first chunk"))
+                        .build()
+        );
+
+        server.enqueue(
+                new MockResponse.Builder()
+                        .code(500)
+                        .addHeader("Content-Type", "application/json")
+                        .build()
+        );
+
+        mockMvc.perform(post("/webhooks/telegram")
+                        .header(
+                                TelegramHeader.TELEGRAM_HEADER,
+                                TELEGRAM_WH_SECRET
+                        )
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(updateBody))
+                .andExpect(status().isInternalServerError());
+
+        RecordedRequest firstRequest =
+                server.takeRequest(1, TimeUnit.SECONDS);
+
+        RecordedRequest secondRequest =
+                server.takeRequest(1, TimeUnit.SECONDS);
+
+        RecordedRequest thirdRequest =
+                server.takeRequest(200, TimeUnit.MILLISECONDS);
+
+        assertThat(firstRequest).isNotNull();
+        assertThat(secondRequest).isNotNull();
+
+        assertThat(thirdRequest).isNull();
+
+        assertThat(firstRequest.getUrl().encodedPath())
+                .isEqualTo(
+                        "/bot"
+                                + TELEGRAM_BOT_TOKEN
+                                + "/sendMessage"
+                );
+
+        assertThat(secondRequest.getUrl().encodedPath())
+                .isEqualTo(
+                        "/bot"
+                                + TELEGRAM_BOT_TOKEN
+                                + "/sendMessage"
+                );
+
+        assertThat(incomingEventJpaRepository.findAll())
+                .singleElement()
+                .extracting(IncomingEventEntity::getStatus)
+                .isEqualTo(IncomingEventStatus.FAILED);
+
+        IncomingEventEntity event = incomingEventJpaRepository.findAll().stream().findFirst()
+                .orElseThrow(() -> new AssertionError("No se encontró ningún evento entrante"));
+        assertThat(event.getStatus()).isEqualTo(IncomingEventStatus.FAILED);
+        assertThat(event.getProcessedAt()).isNotNull();
     }
 
     private ObjectNode validUpdateBody() {
