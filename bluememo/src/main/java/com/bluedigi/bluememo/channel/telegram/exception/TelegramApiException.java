@@ -7,4 +7,8 @@ public class TelegramApiException extends BluememoException {
     public TelegramApiException(String message) {
         super(message, StatusCodeError.INTERNAL_SERVER_ERROR.getStatusCode());
     }
+
+    public TelegramApiException(String message, Throwable cause) {
+        super(message, StatusCodeError.INTERNAL_SERVER_ERROR.getStatusCode(), cause);
+    }
 }

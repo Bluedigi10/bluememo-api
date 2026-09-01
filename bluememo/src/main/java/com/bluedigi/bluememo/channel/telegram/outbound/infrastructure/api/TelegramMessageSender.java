@@ -36,11 +36,27 @@ public class TelegramMessageSender implements ChannelMessageSender {
 
         List<String> messages = splitter.split(message.text());
 
-        messages.forEach(text -> {
-            SendMessage request = telegramSendMessageMapper.toSendMessage(message, text);
-            TelegramApiResponse<SendMessageResponse> response = telegramApiClient.sendMessage(request);
-            validateResponse(response);
-        });
+        for (int index = 0; index < messages.size(); index++) {
+            String text = messages.get(index);
+
+            try {
+                SendMessage request = telegramSendMessageMapper.toSendMessage(message, text);
+
+                TelegramApiResponse<SendMessageResponse> response = telegramApiClient.sendMessage(request);
+
+                validateResponse(response);
+            } catch (RuntimeException exception) {
+                log.error(
+                        "Failed to send Telegram fragment {}/{} for chatId={}",
+                        index + 1,
+                        messages.size(),
+                        message.conversationId(),
+                        exception
+                );
+
+                throw new TelegramApiException("Failed to send Telegram message", exception);
+            }
+        }
     }
 
     private void validateResponse(TelegramApiResponse<SendMessageResponse> response) {
