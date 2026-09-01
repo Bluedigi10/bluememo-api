@@ -28,21 +28,21 @@ public class IncomingEventEntity {
     @Id
     @Column(nullable = false, updatable = false)
     private UUID id;
-    
+
     @Enumerated(EnumType.STRING)
     @Column(name = "channel_type", nullable = false, updatable = false)
     private ChannelType channelType;
-    
+
     @Column(name = "external_event_id", nullable = false, updatable = false)
     private String externalEventId;
-    
+
     @Column(name = "event_type", updatable = false)
     private String eventType;
-    
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private IncomingEventStatus status;
-    
+
     @Column(name = "received_at", nullable = false, updatable = false)
     private Instant receivedAt;
 

@@ -46,15 +46,15 @@ public class TelegramMessageSender implements ChannelMessageSender {
 
                 validateResponse(response);
             } catch (RuntimeException exception) {
-                log.error(
-                        "Failed to send Telegram fragment {}/{} for chatId={}",
-                        index + 1,
-                        messages.size(),
-                        message.conversationId(),
+                throw new TelegramApiException(
+                        "Failed Telegram fragment %d/%d for chatId=%s"
+                                .formatted(
+                                        index + 1,
+                                        messages.size(),
+                                        message.conversationId()
+                                ),
                         exception
                 );
-
-                throw new TelegramApiException("Failed to send Telegram message", exception);
             }
         }
     }

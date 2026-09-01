@@ -40,10 +40,10 @@ public class TelegramUpdateProcess {
         }
 
         IncomingMessage message = telegramUpdateMapper.mapToIncomingMessage(request);
-        
+
         IncomingEvent processingEvent = telegramUpdateMapper.mapToIncomingEvent(request, IncomingEventStatus.PROCESSING);
         incomingEventRepository.updateIncomingEventStatus(processingEvent);
-        
+
         processIncomingMessageUseCase.process(message);
     }
 

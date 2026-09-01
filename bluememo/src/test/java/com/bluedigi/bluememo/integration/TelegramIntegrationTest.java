@@ -45,7 +45,7 @@ class TelegramIntegrationTest {
     private static final String C_START = "/start";
     private static final String C_HELP = "/help";
     private static final String C_MUSIC = "/music";
-    
+
     @Autowired
     private MockMvc mockMvc;
 
@@ -569,7 +569,7 @@ class TelegramIntegrationTest {
     @Test
     void shouldSendMessageInMultipleRequestsWhenResponseExceedsTelegramLimit() throws Exception {
         String longText = "a".repeat(4096);
-    
+
         String updateBody = updateBody(root -> {
             root.put("update_id", 10001);
             message(root).put("text", longText);
@@ -599,50 +599,50 @@ class TelegramIntegrationTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(updateBody))
                 .andExpect(status().isOk());
-                
+
         RecordedRequest firstRequest =
                 server.takeRequest(1, TimeUnit.SECONDS);
-                
+
         RecordedRequest secondRequest =
                 server.takeRequest(1, TimeUnit.SECONDS);
-                
+
         assertThat(firstRequest).isNotNull();
         assertThat(secondRequest).isNotNull();
-                
+
         assertThat(firstRequest.getMethod()).isEqualTo("POST");
         assertThat(secondRequest.getMethod()).isEqualTo("POST");
-                
+
         assertThat(firstRequest.getUrl().encodedPath())
                 .isEqualTo("/bot" + TELEGRAM_BOT_TOKEN + "/sendMessage");
-                
+
         assertThat(secondRequest.getUrl().encodedPath())
                 .isEqualTo("/bot" + TELEGRAM_BOT_TOKEN + "/sendMessage");
-                
+
         String firstBody = firstRequest.getBody().utf8();
         String secondBody = secondRequest.getBody().utf8();
-                
+
         ObjectMapper mapper = new ObjectMapper();
-                
+
         String firstMessage = mapper.readTree(firstBody)
                 .path("text")
                 .asText();
-                
+
         String secondMessage = mapper.readTree(secondBody)
                 .path("text")
                 .asText();
-                
+
         assertThat(firstMessage.codePointCount(0, firstMessage.length()))
                 .isLessThanOrEqualTo(4096);
-                
+
         assertThat(secondMessage.codePointCount(0, secondMessage.length()))
                 .isLessThanOrEqualTo(4096);
-                
+
         assertThat(firstMessage + secondMessage)
                 .isEqualTo("Recibí " + longText);
-                
+
         RecordedRequest thirdRequest =
                 server.takeRequest(200, TimeUnit.MILLISECONDS);
-                
+
         assertThat(thirdRequest).isNull();
 
         String firstChatId = mapper.readTree(firstBody)
@@ -727,26 +727,26 @@ class TelegramIntegrationTest {
 
     private ObjectNode validUpdateBody() {
         ObjectMapper mapper = new ObjectMapper();
-        
+
         ObjectNode root = mapper.createObjectNode();
-        
+
         root.put("update_id", 10000);
-        
+
         ObjectNode message = root.putObject("message");
         message.put("message_id", 123);
         message.put("date", 1234);
         message.put("text", "Hola");
-        
+
         ObjectNode from = message.putObject("from");
         from.put("id", 124);
         from.put("is_bot", true);
         from.put("first_name", "Emma");
         from.put("username", "emmatest");
-        
+
         ObjectNode chat = message.putObject("chat");
         chat.put("id", 1235);
         chat.put("type", "private");
-        
+
         return root;
     }
 
@@ -755,15 +755,15 @@ class TelegramIntegrationTest {
         modifier.accept(root);
         return root.toString();
     }
-    
+
     private ObjectNode message(ObjectNode root) {
         return (ObjectNode) root.path("message");
     }
-    
+
     private ObjectNode from(ObjectNode root) {
         return (ObjectNode) root.path("message").path("from");
     }
-    
+
     private ObjectNode chat(ObjectNode root) {
         return (ObjectNode) root.path("message").path("chat");
     }

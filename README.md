@@ -644,7 +644,7 @@ Application errors use:
   "message": "Todo not found",
   "status": 404,
   "path": "/todos/00000000-0000-0000-0000-000000000000",
-  "timestamp": "2026-08-24T12:00:00"
+  "timestamp": "2026-08-24T12:00:00Z"
 }
 ```
 

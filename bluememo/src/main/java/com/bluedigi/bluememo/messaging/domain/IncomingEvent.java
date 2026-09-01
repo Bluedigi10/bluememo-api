@@ -16,15 +16,15 @@ import lombok.NoArgsConstructor;
 public class IncomingEvent {
 
     private UUID id;
-    
+
     private ChannelType channelType;
-    
+
     private String externalEventId;
-    
+
     private String eventType;
-    
+
     private IncomingEventStatus status;
-    
+
     private Instant receivedAt;
 
     private Instant processedAt;

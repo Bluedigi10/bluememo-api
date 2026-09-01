@@ -66,16 +66,16 @@ class TelegramMessageSplitterTest {
         String text = "a".repeat(4090)
                 + separator
                 + "b".repeat(100);
-    
+
         List<String> messages = splitter.split(text);
-    
+
         assertThat(messages).hasSize(2);
-    
+
         assertThat(messages.get(0))
                 .endsWith(separator);
-    
+
         assertChunksWithinLimit(messages);
-    
+
         assertThat(String.join("", messages))
                 .isEqualTo(text);
     }
