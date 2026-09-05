@@ -1,4 +1,4 @@
-package com.bluedigi.bluememo.todo.infrastructure.persistance;
+package com.bluedigi.bluememo.todo.infrastructure.persistence;
 
 import java.util.Optional;
 import java.util.UUID;
@@ -15,9 +15,9 @@ import com.bluedigi.bluememo.identity.infrastructure.persistence.repository.User
 import com.bluedigi.bluememo.todo.domain.model.Todo;
 import com.bluedigi.bluememo.todo.domain.model.TodoStatus;
 import com.bluedigi.bluememo.todo.domain.repository.TodoRepository;
-import com.bluedigi.bluememo.todo.infrastructure.persistance.entity.TodoEntity;
-import com.bluedigi.bluememo.todo.infrastructure.persistance.mapper.TodoMapper;
-import com.bluedigi.bluememo.todo.infrastructure.persistance.repository.TodoJpaRepository;
+import com.bluedigi.bluememo.todo.infrastructure.persistence.entity.TodoEntity;
+import com.bluedigi.bluememo.todo.infrastructure.persistence.mapper.TodoMapper;
+import com.bluedigi.bluememo.todo.infrastructure.persistence.repository.TodoJpaRepository;
 
 @Repository
 public class TodoRepositoryAdapter implements TodoRepository{
@@ -36,15 +36,15 @@ public class TodoRepositoryAdapter implements TodoRepository{
     public Todo saveTodo(Todo request, UUID userId) {
         UserEntity user = userJpaRepository.getReferenceById(userId);
         TodoEntity todoToSave = todoMapper.todoToTodoEntity(request, user);
-        
+
         TodoEntity saved;
-        
+
         try {
-            saved = todoJpaRepository.saveAndFlush(todoToSave); 
+            saved = todoJpaRepository.saveAndFlush(todoToSave);
         } catch (DataIntegrityViolationException e) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Todo title already exist");
         }
-        
+
         return todoMapper.todoEntityToTodo(saved);
     }
 
@@ -55,13 +55,13 @@ public class TodoRepositoryAdapter implements TodoRepository{
         todoMapper.updateTodoEntity(existing, request);
 
         TodoEntity updated;
-        
+
         try {
-            updated = todoJpaRepository.saveAndFlush(existing); 
+            updated = todoJpaRepository.saveAndFlush(existing);
         } catch (DataIntegrityViolationException e) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Unexpected error occurred while updating the todo");
         }
-        
+
         return todoMapper.todoEntityToTodo(updated);
     }
 

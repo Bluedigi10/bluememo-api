@@ -19,7 +19,7 @@ import org.springframework.test.web.servlet.MockMvc;
 
 import com.bluedigi.bluememo.identity.infrastructure.persistence.repository.UserJpaRepository;
 import com.bluedigi.bluememo.testsupport.IntegrationTest;
-import com.bluedigi.bluememo.todo.infrastructure.persistance.repository.TodoJpaRepository;
+import com.bluedigi.bluememo.todo.infrastructure.persistence.repository.TodoJpaRepository;
 import com.jayway.jsonpath.JsonPath;
 
 @IntegrationTest

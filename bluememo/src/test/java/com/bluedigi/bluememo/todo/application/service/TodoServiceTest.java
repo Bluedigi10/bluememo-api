@@ -4,7 +4,7 @@ import com.bluedigi.bluememo.identity.domain.repository.UserRepository;
 import com.bluedigi.bluememo.todo.domain.model.Todo;
 import com.bluedigi.bluememo.todo.domain.model.TodoStatus;
 import com.bluedigi.bluememo.todo.domain.repository.TodoRepository;
-import com.bluedigi.bluememo.todo.infrastructure.persistance.mapper.TodoMapper;
+import com.bluedigi.bluememo.todo.infrastructure.persistence.mapper.TodoMapper;
 import com.bluedigi.bluememo.todo.infrastructure.web.request.CreateTodoRequest;
 import com.bluedigi.bluememo.todo.infrastructure.web.request.UpdateTodoRequest;
 import com.bluedigi.bluememo.todo.infrastructure.web.response.TodoResponse;

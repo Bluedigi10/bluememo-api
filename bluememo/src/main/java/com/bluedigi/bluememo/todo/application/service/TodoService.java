@@ -16,7 +16,7 @@ import com.bluedigi.bluememo.identity.domain.repository.UserRepository;
 import com.bluedigi.bluememo.todo.domain.model.Todo;
 import com.bluedigi.bluememo.todo.domain.model.TodoStatus;
 import com.bluedigi.bluememo.todo.domain.repository.TodoRepository;
-import com.bluedigi.bluememo.todo.infrastructure.persistance.mapper.TodoMapper;
+import com.bluedigi.bluememo.todo.infrastructure.persistence.mapper.TodoMapper;
 import com.bluedigi.bluememo.todo.infrastructure.web.request.CreateTodoRequest;
 import com.bluedigi.bluememo.todo.infrastructure.web.request.UpdateTodoRequest;
 import com.bluedigi.bluememo.todo.infrastructure.web.response.TodoResponse;
@@ -33,11 +33,11 @@ public class TodoService {
         this.todoRepository = todoRepository;
         this.userRepository = userRepository;
     }
-    
+
     @Transactional
     public TodoResponse createTodo(String userId, CreateTodoRequest request) {
         UUID userUuid = UUID.fromString(userId);
-        
+
         validateUserId(userUuid);
 
         if (todoRepository.existByUserIdAndTitle(userUuid, request.title().trim())) {
@@ -45,9 +45,9 @@ public class TodoService {
         }
 
         Todo todoSave = todoMapper.createTodoRequestToTodo(request);
-        
+
         todoSave.setStatus(TodoStatus.PENDING);
-        
+
         Todo todoSaved = todoRepository.saveTodo(todoSave, userUuid);
 
         return todoMapper.todoToTodoResponse(todoSaved);
@@ -56,12 +56,12 @@ public class TodoService {
     @Transactional(readOnly = true)
     public Page<TodoResponse> getTodos(String userId, String status, String sortBy, String direction, int page, int size) {
         UUID userUuid = UUID.fromString(userId);
-        
+
         validateUserId(userUuid);
         Sort.Direction sortDirection =
             Sort.Direction.fromString(direction);
         TodoSortField sortField = TodoSortField.fromValue(sortBy);
-        
+
         Pageable pageable = PageRequest.of(
             page,
             size,
@@ -91,7 +91,7 @@ public class TodoService {
         UUID userUuid = UUID.fromString(userId);
         UUID todoUuid = UUID.fromString(todoId);
         String title = request.title().trim();
-        
+
         validateUserId(userUuid);
         validateTodoAndUser(userUuid, todoUuid);
         validateTodoIdAndTitleAndUserId(userUuid, title, todoUuid);
@@ -114,7 +114,7 @@ public class TodoService {
 
         UUID userUuid = UUID.fromString(userId);
         UUID todoUuid = UUID.fromString(todoId);
-        
+
         validateUserId(userUuid);
         validateTodoAndUser(userUuid, todoUuid);
 
@@ -129,8 +129,8 @@ public class TodoService {
 
         existingTodo.setStatus(newStatus);
 
-        
-        
+
+
         return todoMapper.todoToTodoResponse(todoRepository.updateTodo(existingTodo));
     }
 
@@ -138,7 +138,7 @@ public class TodoService {
     public void deleteTodo(String userId, String todoId) {
         UUID userUuid = UUID.fromString(userId);
         UUID todoUuid = UUID.fromString(todoId);
-        
+
         validateUserId(userUuid);
         validateTodoAndUser(userUuid, todoUuid);
 
