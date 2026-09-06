@@ -28,7 +28,7 @@ class ChannelLinkTokenRepositoryAdapter implements ChannelLinkTokenRepository {
         UUID userId = token.getUserId();
         UserEntity user = userJpaRepository.getReferenceById(userId);
         ChannelLinkTokenEntity entity = mapper.toEntity(token, user);
-        jpaRepository.save(entity);
+        jpaRepository.insertIfAbsent(entity);
     }
 
     @Override
