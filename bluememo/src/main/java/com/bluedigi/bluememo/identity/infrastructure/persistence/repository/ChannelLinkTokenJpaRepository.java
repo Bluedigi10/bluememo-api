@@ -35,7 +35,7 @@ public interface ChannelLinkTokenJpaRepository extends JpaRepository<ChannelLink
                 expires_at = EXCLUDED.expires_at,
                 used_at = NULL
             """, nativeQuery = true)
-    int insertIfAbsent(
+    int upsert(
         @Param("token") ChannelLinkTokenEntity token
     );
 
