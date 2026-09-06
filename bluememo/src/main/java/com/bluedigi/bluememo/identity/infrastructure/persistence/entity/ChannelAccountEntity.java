@@ -37,9 +37,9 @@ public class ChannelAccountEntity {
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private ChannelType channelType;
-    @Column(nullable = false, unique = true)
+    @Column(nullable = false)
     private String externalUserId;
-    @Column(nullable = false, unique = true)
+    @Column(nullable = false)
     private String externalChatId;
     @CreationTimestamp
     private Instant linkedAt;

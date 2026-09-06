@@ -9,6 +9,7 @@ import java.time.Instant;
 import java.util.Base64;
 
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import com.bluedigi.bluememo.common.domain.ChannelType;
 import com.bluedigi.bluememo.common.exception.BluememoException;
@@ -30,6 +31,7 @@ public class ChannelAccountService {
     private final ChannelAccountMapper channelAccountMapper;
     private final LinkProperties linkProperties;
 
+    @Transactional
     public LinkChannelResponse generateLink(CreateChannelLinkToken request) {
         Duration expirationDuration = Duration.ofMinutes(15);
 
@@ -40,13 +42,13 @@ public class ChannelAccountService {
         channelLinkToken.setTokenHash(hashToken(token));
         channelLinkToken.setExpiresAt(expirationDate);
 
+        String linkUrl = generateLinkUrl(request.channelType(), token);
+
         try {
             channelLinkTokenRepository.saveChannelLinkToken(channelLinkToken);
         } catch (RuntimeException e) {
             throw new BluememoException("Failed to save channel link token", StatusCodeError.INTERNAL_SERVER_ERROR.getStatusCode(), e);
         }
-
-        String linkUrl = generateLinkUrl(request.channelType(), token);
 
         return new LinkChannelResponse(linkUrl, expirationDate);
     }

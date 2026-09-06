@@ -10,7 +10,9 @@ CREATE TABLE channel_link_tokens (
     CONSTRAINT fk_channel_link_tokens_by_user
         FOREIGN KEY (user_id)
         REFERENCES users (id),
-    UNIQUE (token_hash)
+    UNIQUE (token_hash),
+    CONSTRAINT uk_channel_type_user_channel
+    UNIQUE (user_id, channel_type)
 );
 
 CREATE TABLE channel_accounts (
@@ -18,7 +20,7 @@ CREATE TABLE channel_accounts (
     user_id UUID NOT NULL,
     channel_type VARCHAR(30) NOT NULL,
     external_user_id VARCHAR(255) NOT NULL,
-    external_chat_id VARCHAR(255)NOT NULL,
+    external_chat_id VARCHAR(255) NOT NULL,
     linked_at TIMESTAMP WITH TIME ZONE NOT NULL,
 
     CONSTRAINT pk_channel_accounts PRIMARY KEY (id),

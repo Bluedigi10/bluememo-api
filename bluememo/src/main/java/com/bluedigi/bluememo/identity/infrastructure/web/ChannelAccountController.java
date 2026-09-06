@@ -13,6 +13,7 @@ import com.bluedigi.bluememo.identity.application.service.ChannelAccountService;
 import com.bluedigi.bluememo.identity.infrastructure.web.request.CreateChannelLinkToken;
 import com.bluedigi.bluememo.identity.infrastructure.web.response.LinkChannelResponse;
 
+import jakarta.validation.Valid;
 import lombok.AllArgsConstructor;
 
 @RestController
@@ -22,7 +23,7 @@ public class ChannelAccountController {
     private final ChannelAccountService channelAccountService;
 
     @PostMapping ("me/link/channel/{channelType}")
-    public ResponseEntity<LinkChannelResponse> putMethodName(@PathVariable ChannelType channelType, @AuthenticationPrincipal UserDetails loggedUser) {
+    public ResponseEntity<LinkChannelResponse> generateChannelLink(@Valid @PathVariable ChannelType channelType, @AuthenticationPrincipal UserDetails loggedUser) {
         CreateChannelLinkToken request = new CreateChannelLinkToken(loggedUser.getUsername(), channelType);
         LinkChannelResponse response = channelAccountService.generateLink(request);
         return ResponseEntity.ok(response);
