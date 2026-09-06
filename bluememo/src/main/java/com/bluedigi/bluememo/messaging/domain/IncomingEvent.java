@@ -3,6 +3,8 @@ package com.bluedigi.bluememo.messaging.domain;
 import java.time.Instant;
 import java.util.UUID;
 
+import com.bluedigi.bluememo.common.domain.ChannelType;
+
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
 import lombok.Builder;

@@ -1,10 +1,10 @@
 package com.bluedigi.bluememo.messaging.application.service;
 
+import com.bluedigi.bluememo.common.domain.ChannelType;
 import com.bluedigi.bluememo.common.exception.StatusCodeError;
 import com.bluedigi.bluememo.messaging.application.exception.MessageChannelNotConfiguredException;
 import com.bluedigi.bluememo.messaging.application.port.out.ChannelMessageSender;
 import com.bluedigi.bluememo.messaging.application.port.out.SendMessagePort;
-import com.bluedigi.bluememo.messaging.domain.ChannelType;
 import com.bluedigi.bluememo.messaging.domain.OutgoingMessage;
 import org.springframework.stereotype.Component;
 

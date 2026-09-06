@@ -1,7 +1,6 @@
 package com.bluedigi.bluememo.identity.infrastructure.persistence;
 
-import java.time.LocalDateTime;
-import java.time.ZoneId;
+import java.time.Instant;
 import java.util.UUID;
 
 import org.springframework.stereotype.Repository;
@@ -39,7 +38,7 @@ class ChannelLinkTokenRepositoryAdapter implements ChannelLinkTokenRepository {
             throw new IllegalArgumentException("Invalid token");
         }
 
-        entity.setUsedAt(LocalDateTime.now(ZoneId.systemDefault()));
+        entity.setUsedAt(Instant.now());
             jpaRepository.save(entity);
     }
 

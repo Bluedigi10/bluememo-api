@@ -1,7 +1,7 @@
 package com.bluedigi.bluememo.messaging.application.exception;
 
+import com.bluedigi.bluememo.common.domain.ChannelType;
 import com.bluedigi.bluememo.common.exception.BluememoException;
-import com.bluedigi.bluememo.messaging.domain.ChannelType;
 
 public class MessageChannelNotConfiguredException extends BluememoException {
 

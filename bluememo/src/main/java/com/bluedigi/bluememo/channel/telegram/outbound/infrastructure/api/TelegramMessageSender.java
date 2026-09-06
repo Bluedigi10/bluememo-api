@@ -6,8 +6,8 @@ import com.bluedigi.bluememo.channel.telegram.outbound.infrastructure.api.dto.re
 import com.bluedigi.bluememo.channel.telegram.outbound.infrastructure.api.dto.response.TelegramApiResponse;
 import com.bluedigi.bluememo.channel.telegram.outbound.infrastructure.api.mapper.TelegramSendMessageMapper;
 import com.bluedigi.bluememo.channel.telegram.utils.TelegramMessageSplitter;
+import com.bluedigi.bluememo.common.domain.ChannelType;
 import com.bluedigi.bluememo.messaging.application.port.out.ChannelMessageSender;
-import com.bluedigi.bluememo.messaging.domain.ChannelType;
 import com.bluedigi.bluememo.messaging.domain.OutgoingMessage;
 
 import lombok.RequiredArgsConstructor;

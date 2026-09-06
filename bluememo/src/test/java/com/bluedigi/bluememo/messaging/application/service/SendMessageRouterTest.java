@@ -11,8 +11,8 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.List;
 
-import static com.bluedigi.bluememo.messaging.domain.ChannelType.TELEGRAM;
-import static com.bluedigi.bluememo.messaging.domain.ChannelType.WHATSAPP;
+import static com.bluedigi.bluememo.common.domain.ChannelType.TELEGRAM;
+import static com.bluedigi.bluememo.common.domain.ChannelType.WHATSAPP;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;

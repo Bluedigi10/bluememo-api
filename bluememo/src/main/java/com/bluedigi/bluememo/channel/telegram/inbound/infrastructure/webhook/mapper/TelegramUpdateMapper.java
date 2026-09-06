@@ -1,12 +1,12 @@
 package com.bluedigi.bluememo.channel.telegram.inbound.infrastructure.webhook.mapper;
 
-import com.bluedigi.bluememo.messaging.domain.ChannelType;
 import com.bluedigi.bluememo.messaging.domain.IncomingEvent;
 import com.bluedigi.bluememo.messaging.domain.IncomingEventStatus;
 
 import org.springframework.stereotype.Component;
 
 import com.bluedigi.bluememo.channel.telegram.inbound.infrastructure.webhook.request.TelegramUpdateRequest;
+import com.bluedigi.bluememo.common.domain.ChannelType;
 import com.bluedigi.bluememo.messaging.domain.IncomingMessage;
 
 import java.time.Instant;

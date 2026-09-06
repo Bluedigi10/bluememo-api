@@ -2,6 +2,8 @@ package com.bluedigi.bluememo.messaging.domain;
 
 import java.time.Instant;
 
+import com.bluedigi.bluememo.common.domain.ChannelType;
+
 public record IncomingMessage(
     ChannelType channelType,
     String externalMessageId,

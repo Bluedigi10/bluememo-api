@@ -1,11 +1,11 @@
 package com.bluedigi.bluememo.identity.infrastructure.persistence.entity;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.UUID;
 
 import org.hibernate.annotations.CreationTimestamp;
 
-import com.bluedigi.bluememo.messaging.domain.ChannelType;
+import com.bluedigi.bluememo.common.domain.ChannelType;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -42,5 +42,5 @@ public class ChannelAccountEntity {
     @Column(nullable = false, unique = true)
     private String externalChatId;
     @CreationTimestamp
-    private LocalDateTime linkedAt;
+    private Instant linkedAt;
 }

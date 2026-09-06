@@ -3,7 +3,7 @@ package com.bluedigi.bluememo.identity.domain.model;
 import java.time.Instant;
 import java.util.UUID;
 
-import com.bluedigi.bluememo.messaging.domain.ChannelType;
+import com.bluedigi.bluememo.common.domain.ChannelType;
 
 import lombok.Data;
 

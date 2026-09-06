@@ -8,10 +8,10 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.bluedigi.bluememo.common.domain.ChannelType;
 import com.bluedigi.bluememo.identity.application.service.ChannelAccountService;
 import com.bluedigi.bluememo.identity.infrastructure.web.request.CreateChannelLinkToken;
 import com.bluedigi.bluememo.identity.infrastructure.web.response.LinkChannelResponse;
-import com.bluedigi.bluememo.messaging.domain.ChannelType;
 
 import lombok.AllArgsConstructor;
 
@@ -23,7 +23,7 @@ public class ChannelAccountController {
 
     @PostMapping ("me/link/channel/{channelType}")
     public ResponseEntity<LinkChannelResponse> putMethodName(@PathVariable ChannelType channelType, @AuthenticationPrincipal UserDetails loggedUser) {
-        CreateChannelLinkToken request = new CreateChannelLinkToken(loggedUser.getUsername(), channelType.name());
+        CreateChannelLinkToken request = new CreateChannelLinkToken(loggedUser.getUsername(), channelType);
         LinkChannelResponse response = channelAccountService.generateLink(request);
         return ResponseEntity.ok(response);
     }

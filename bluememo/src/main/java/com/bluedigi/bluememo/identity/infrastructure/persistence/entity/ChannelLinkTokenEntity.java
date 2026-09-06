@@ -1,11 +1,9 @@
 package com.bluedigi.bluememo.identity.infrastructure.persistence.entity;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.UUID;
 
-import org.hibernate.annotations.UpdateTimestamp;
-
-import com.bluedigi.bluememo.messaging.domain.ChannelType;
+import com.bluedigi.bluememo.common.domain.ChannelType;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -40,8 +38,6 @@ public class ChannelLinkTokenEntity {
     @Column(nullable = false)
     private String tokenHash;
     @Column (nullable = false)
-    private LocalDateTime expiresAt;
-    @UpdateTimestamp
-    private LocalDateTime usedAt;
-    private Boolean isUsed;
+    private Instant expiresAt;
+    private Instant usedAt;
 }

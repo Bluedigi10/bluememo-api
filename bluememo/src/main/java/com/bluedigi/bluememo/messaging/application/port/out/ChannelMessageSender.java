@@ -1,6 +1,6 @@
 package com.bluedigi.bluememo.messaging.application.port.out;
 
-import com.bluedigi.bluememo.messaging.domain.ChannelType;
+import com.bluedigi.bluememo.common.domain.ChannelType;
 import com.bluedigi.bluememo.messaging.domain.OutgoingMessage;
 
 public interface ChannelMessageSender {
