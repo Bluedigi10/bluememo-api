@@ -89,14 +89,14 @@ public class ChannelAccountService {
         }
 
         boolean linkAccountExists = channelAccountRepository.existsByUserIdAndChannelType(userId, channelType);
-        boolean channelAccountExists = channelAccountRepository.existsByExternalUserIdAndChannelType(externalUserId, channelType);
+        boolean externalAccountExists = channelAccountRepository.existsByExternalUserIdAndChannelType(externalUserId, channelType);
 
         if (linkAccountExists) {
             return "Ya tienes una cuenta vinculada a este canal";
         }
 
-        if (channelAccountExists) {
-            return "Esta canal ya está vinculado a otra cuenta";
+        if (externalAccountExists) {
+            return "Este canal ya está vinculado a otra cuenta";
         }
 
         channelAccountRepository.saveChannelLinkAccount(account);
