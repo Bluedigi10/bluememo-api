@@ -23,13 +23,12 @@ class ChannelLinkTokenRepositoryAdapter implements ChannelLinkTokenRepository {
     private final ChannelAccountMapper mapper;
 
     @Override
-    public Boolean saveChannelLinkToken(ChannelLinkToken token) {
+    public void saveChannelLinkToken(ChannelLinkToken token) {
         UUID userId = token.getUserId();
         UserEntity user = userJpaRepository.getReferenceById(userId);
         ChannelLinkTokenEntity entity = mapper.toEntity(token, user);
         entity.setId(UUID.randomUUID());
-        int rowsAffected = jpaRepository.upsert(entity);
-        return rowsAffected == 1;
+        jpaRepository.upsert(entity);
     }
 
     @Override

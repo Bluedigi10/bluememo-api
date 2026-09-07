@@ -44,6 +44,8 @@ public interface ChannelLinkTokenJpaRepository extends JpaRepository<ChannelLink
             UPDATE channel_link_tokens
             SET used_at = CURRENT_TIMESTAMP
             WHERE token_hash = :tokenHash
+            AND used_at IS NULL
+            AND expires_at > CURRENT_TIMESTAMP
             """, nativeQuery = true)
     int markTokenAsUsed(@Param("tokenHash") String tokenHash);
 }
