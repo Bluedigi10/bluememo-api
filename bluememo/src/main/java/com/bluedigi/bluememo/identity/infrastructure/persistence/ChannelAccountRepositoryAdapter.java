@@ -39,4 +39,9 @@ public class ChannelAccountRepositoryAdapter implements ChannelAccountRepository
         return userJpaRepository.getReferenceById(userId);
     }
 
+    @Override
+    public boolean existsByExternalUserIdAndChannelType(String externalUserId, ChannelType channelType) {
+        return channelAccountJpaRepository.existsByExternalUserIdAndChannelType(externalUserId, channelType);
+    }
+
 }

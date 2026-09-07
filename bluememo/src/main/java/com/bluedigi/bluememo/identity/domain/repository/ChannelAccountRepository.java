@@ -8,4 +8,5 @@ import com.bluedigi.bluememo.identity.domain.model.ChannelAccount;
 public interface ChannelAccountRepository {
     void saveChannelLinkAccount(ChannelAccount account);
     boolean existsByUserIdAndChannelType(UUID userId, ChannelType channelType);
+    boolean existsByExternalUserIdAndChannelType(String externalUserId, ChannelType channelType);
 }

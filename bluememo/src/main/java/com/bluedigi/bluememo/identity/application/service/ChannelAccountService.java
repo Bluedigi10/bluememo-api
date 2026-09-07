@@ -70,13 +70,15 @@ public class ChannelAccountService {
 
         UUID userId = existingToken.getUserId();
 
+        ChannelType channelType = existingToken.getChannelType();
+
         if (existingToken.getChannelType() != messageChannelType) {
             return "El token no coincide con el canal";
         }
 
         ChannelAccount account = new ChannelAccount();
         account.setUserId(userId);
-        account.setChannelType(messageChannelType);
+        account.setChannelType(channelType);
         account.setExternalUserId(externalUserId);
         account.setExternalChatId(externalChatId);
 
@@ -86,10 +88,15 @@ public class ChannelAccountService {
             return "Token inválido o ya usado";
         }
 
-        boolean linkAccountExists = channelAccountRepository.existsByUserIdAndChannelType(userId, messageChannelType);
+        boolean linkAccountExists = channelAccountRepository.existsByUserIdAndChannelType(userId, channelType);
+        boolean channelAccountExists = channelAccountRepository.existsByExternalUserIdAndChannelType(externalUserId, channelType);
 
         if (linkAccountExists) {
             return "Ya tienes una cuenta vinculada a este canal";
+        }
+
+        if (channelAccountExists) {
+            return "Esta canal ya está vinculado a otra cuenta";
         }
 
         channelAccountRepository.saveChannelLinkAccount(account);
