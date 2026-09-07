@@ -85,7 +85,7 @@ public class ProcessIncomingMessageService implements ProcessIncomingMessageUseC
 
         String externalUserId = message.senderId();
         String externalChatId = message.conversationId();
-        return channelAccountService.linkAccount(externalUserId, externalChatId, token);
+        return channelAccountService.linkAccount(externalUserId, message.channelType(), externalChatId, token);
     }
 
     private String[] extractCommandFromMessage(String text) {

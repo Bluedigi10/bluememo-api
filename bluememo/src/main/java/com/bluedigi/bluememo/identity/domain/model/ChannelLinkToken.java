@@ -15,4 +15,8 @@ public class ChannelLinkToken {
     private String tokenHash;
     private Instant expiresAt;
     private Instant usedAt;
+
+    public boolean isValidAt(Instant now) {
+    return usedAt == null && expiresAt.isAfter(now);
+}
 }
