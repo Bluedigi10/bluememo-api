@@ -4,7 +4,9 @@ import java.util.UUID;
 
 import org.springframework.stereotype.Component;
 
+import com.bluedigi.bluememo.identity.domain.model.ChannelAccount;
 import com.bluedigi.bluememo.identity.domain.model.ChannelLinkToken;
+import com.bluedigi.bluememo.identity.infrastructure.persistence.entity.ChannelAccountEntity;
 import com.bluedigi.bluememo.identity.infrastructure.persistence.entity.ChannelLinkTokenEntity;
 import com.bluedigi.bluememo.identity.infrastructure.persistence.entity.UserEntity;
 import com.bluedigi.bluememo.identity.infrastructure.web.request.CreateChannelLinkToken;
@@ -38,6 +40,16 @@ public class ChannelAccountMapper {
         domain.setExpiresAt(entity.getExpiresAt());
         domain.setUsedAt(entity.getUsedAt() != null ? entity.getUsedAt() : null);
         return domain;
+    }
+
+    public ChannelAccountEntity toEntity(ChannelAccount domain, UserEntity user) {
+        ChannelAccountEntity entity = new ChannelAccountEntity();
+        entity.setId(domain.getId());
+        entity.setUser(user);
+        entity.setChannelType(domain.getChannelType());
+        entity.setExternalUserId(domain.getExternalUserId());
+        entity.setExternalChatId(domain.getExternalChatId());
+        return entity;
     }
 
 }

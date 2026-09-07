@@ -7,6 +7,7 @@ import java.security.SecureRandom;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.Base64;
+import java.util.UUID;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -57,13 +58,13 @@ public class ChannelAccountService {
     }
 
     @Transactional
-    public String linkAccount(ChannelAccount account, String token) {
+    public String linkAccount(String externalUserId, String externalChatId, String token) {
 
         String tokenHash = hashToken(token);
 
         ChannelLinkToken existingToken = channelLinkTokenRepository.findByTokenHash(tokenHash);
 
-        if (existingToken == null || existingToken.getUsedAt() != null) {
+        if (existingToken.getUsedAt() != null) {
             return "Token inválido o ya usado";
         }
 
@@ -71,21 +72,29 @@ public class ChannelAccountService {
             return "Token expirado";
         }
 
-        Boolean accountExists = channelAccountRepository.existsByUserIdAndChannelType(account.getUserId(), account.getChannelType().name());
+        UUID userId = existingToken.getUserId();
+        ChannelType channelType = existingToken.getChannelType();
 
-        if (Boolean.TRUE.equals(accountExists)) {
-            return "Ya tienes una cuenta vinculada con este canal";
+        ChannelAccount account = new ChannelAccount();
+        account.setUserId(userId);
+        account.setChannelType(channelType);
+        account.setExternalUserId(externalUserId);
+        account.setExternalChatId(externalChatId);
+
+        boolean isMarkedAsUsed = channelLinkTokenRepository.markTokenAsUsed(tokenHash);
+
+        if (!isMarkedAsUsed) {
+            return "Token inválido o ya usado";
+        }
+
+        boolean linkAccountExists = channelAccountRepository.existsByUserIdAndChannelType(userId, channelType);
+
+        if (linkAccountExists) {
+            return "Ya tienes una cuenta vinculada a este canal";
         }
 
         channelAccountRepository.saveChannelLinkAccount(account);
-
-        Boolean isMarkedAsUsed = channelLinkTokenRepository.markTokenAsUsed(tokenHash);
-
-        if (Boolean.TRUE.equals(isMarkedAsUsed)) {
-            return "Cuenta vinculada con éxito. ¡Bienvenido!";
-        } else {
-            return "Token inválido o ya usado";
-        }
+        return "Cuenta vinculada con éxito. ¡Bienvenido!";
     }
 
     private String generateToken() {
