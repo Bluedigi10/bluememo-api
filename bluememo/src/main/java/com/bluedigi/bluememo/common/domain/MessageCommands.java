@@ -5,7 +5,7 @@ public enum MessageCommands {
     HELP("/help"),
     UNKNOWN("unknown");
 
-    private String value;
+    private final String value;
 
     MessageCommands(String string) {
         this.value = string;
