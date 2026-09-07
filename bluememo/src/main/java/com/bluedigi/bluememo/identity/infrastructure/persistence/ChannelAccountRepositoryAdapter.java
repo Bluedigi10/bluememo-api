@@ -31,7 +31,7 @@ public class ChannelAccountRepositoryAdapter implements ChannelAccountRepository
 
     @Override
     public boolean existsByUserIdAndChannelType(UUID userId, ChannelType channelType) {
-        return channelAccountJpaRepository.existsByUser_IdAndChannelType(userId, channelType.name());
+        return channelAccountJpaRepository.existsByUser_IdAndChannelType(userId, channelType);
     }
 
     private UserEntity getUserEntityFromChannelAccount(ChannelAccount account) {

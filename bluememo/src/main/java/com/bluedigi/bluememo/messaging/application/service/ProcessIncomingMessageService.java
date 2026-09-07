@@ -67,26 +67,29 @@ public class ProcessIncomingMessageService implements ProcessIncomingMessageUseC
 
         log.info("Processing command: {}", text);
 
-        return switch (MessageCommands.fromValue(text)) {
-            case START -> linkAccount(message);
+        String[] parts = extractTokenFromMessage(text);
+        String command = parts[0];
+        String token = parts.length > 1 ? parts[1] : null;
+
+        return switch (MessageCommands.fromValue(command)) {
+            case START -> linkAccount(message, token);
             case HELP -> "Estos son los comandos disponibles...";
             default -> "Comando no reconocido";
         };
     }
 
-    private String linkAccount(IncomingMessage message) {
+    private String linkAccount(IncomingMessage message, String token) {
 
         String externalUserId = message.senderId();
         String externalChatId = message.conversationId();
-        String token = extractTokenFromMessage(message.text());
         return channelAccountService.linkAccount(externalUserId, externalChatId, token);
     }
 
-    private String extractTokenFromMessage(String text) {
+    private String[] extractTokenFromMessage(String text) {
         if (text == null || !text.startsWith("/start")) {
-            return null;
+            return new String[0];
         }
-        return text.substring("/start".length()).trim();
+        return text.trim().split("\\s+", 2);
     }
 
 }

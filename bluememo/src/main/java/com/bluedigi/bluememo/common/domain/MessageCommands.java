@@ -2,7 +2,8 @@ package com.bluedigi.bluememo.common.domain;
 
 public enum MessageCommands {
     START("/start"),
-    HELP("/help");
+    HELP("/help"),
+    UNKNOWN("unknown");
 
     private String value;
 
@@ -16,11 +17,11 @@ public enum MessageCommands {
 
     public static MessageCommands fromValue(String text) {
         for (MessageCommands command : MessageCommands.values()) {
-            if (command.getValue().equals(text)) {
+            if (command.getValue().equals(text) && command != UNKNOWN) {
                 return command;
             }
         }
-        throw new IllegalArgumentException("Invalid command value: " + text);
+        return UNKNOWN;
     }
 
 
