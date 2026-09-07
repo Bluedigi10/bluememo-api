@@ -29,4 +29,15 @@ public class ChannelAccountMapper {
         return entity;
     }
 
+    public ChannelLinkToken toDomain(ChannelLinkTokenEntity entity) {
+        ChannelLinkToken domain = new ChannelLinkToken();
+        domain.setId(entity.getId());
+        domain.setUserId(entity.getUser().getId());
+        domain.setChannelType(entity.getChannelType());
+        domain.setTokenHash(entity.getTokenHash());
+        domain.setExpiresAt(entity.getExpiresAt());
+        domain.setUsedAt(entity.getUsedAt() != null ? entity.getUsedAt() : null);
+        return domain;
+    }
+
 }

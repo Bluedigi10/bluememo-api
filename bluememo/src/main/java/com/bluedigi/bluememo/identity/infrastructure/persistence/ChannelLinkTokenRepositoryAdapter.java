@@ -4,6 +4,8 @@ import java.util.UUID;
 
 import org.springframework.stereotype.Repository;
 
+import com.bluedigi.bluememo.common.exception.BluememoException;
+import com.bluedigi.bluememo.common.exception.StatusCodeError;
 import com.bluedigi.bluememo.identity.domain.model.ChannelLinkToken;
 import com.bluedigi.bluememo.identity.domain.repository.ChannelLinkTokenRepository;
 import com.bluedigi.bluememo.identity.infrastructure.persistence.entity.ChannelLinkTokenEntity;
@@ -37,5 +39,11 @@ class ChannelLinkTokenRepositoryAdapter implements ChannelLinkTokenRepository {
         return rowsUpdated == 1;
     }
 
+    @Override
+    public ChannelLinkToken findByTokenHash(String tokenHash) {
+        ChannelLinkTokenEntity entity = jpaRepository.findByTokenHash(tokenHash)
+        .orElseThrow(() -> new BluememoException("Token inválido", StatusCodeError.BAD_REQUEST.getStatusCode()));
 
+        return mapper.toDomain(entity);
+    }
 }

@@ -15,7 +15,9 @@ import com.bluedigi.bluememo.common.domain.ChannelType;
 import com.bluedigi.bluememo.common.exception.BluememoException;
 import com.bluedigi.bluememo.common.exception.StatusCodeError;
 import com.bluedigi.bluememo.identity.config.LinkProperties;
+import com.bluedigi.bluememo.identity.domain.model.ChannelAccount;
 import com.bluedigi.bluememo.identity.domain.model.ChannelLinkToken;
+import com.bluedigi.bluememo.identity.domain.repository.ChannelAccountRepository;
 import com.bluedigi.bluememo.identity.domain.repository.ChannelLinkTokenRepository;
 import com.bluedigi.bluememo.identity.infrastructure.persistence.mapper.ChannelAccountMapper;
 import com.bluedigi.bluememo.identity.infrastructure.web.request.CreateChannelLinkToken;
@@ -28,6 +30,7 @@ import lombok.AllArgsConstructor;
 public class ChannelAccountService {
     private static final SecureRandom SECURE_RANDOM = new SecureRandom();
     private final ChannelLinkTokenRepository channelLinkTokenRepository;
+    private final ChannelAccountRepository channelAccountRepository;
     private final ChannelAccountMapper channelAccountMapper;
     private final LinkProperties linkProperties;
 
@@ -51,6 +54,38 @@ public class ChannelAccountService {
         }
 
         return new LinkChannelResponse(linkUrl, expirationDate);
+    }
+
+    @Transactional
+    public String linkAccount(ChannelAccount account, String token) {
+
+        String tokenHash = hashToken(token);
+
+        ChannelLinkToken existingToken = channelLinkTokenRepository.findByTokenHash(tokenHash);
+
+        if (existingToken == null || existingToken.getUsedAt() != null) {
+            return "Token inválido o ya usado";
+        }
+
+        if (existingToken.getExpiresAt().isBefore(Instant.now())) {
+            return "Token expirado";
+        }
+
+        Boolean accountExists = channelAccountRepository.existsByUserIdAndChannelType(account.getUserId(), account.getChannelType().name());
+
+        if (Boolean.TRUE.equals(accountExists)) {
+            return "Ya tienes una cuenta vinculada con este canal";
+        }
+
+        channelAccountRepository.saveChannelLinkAccount(account);
+
+        Boolean isMarkedAsUsed = channelLinkTokenRepository.markTokenAsUsed(tokenHash);
+
+        if (Boolean.TRUE.equals(isMarkedAsUsed)) {
+            return "Cuenta vinculada con éxito. ¡Bienvenido!";
+        } else {
+            return "Token inválido o ya usado";
+        }
     }
 
     private String generateToken() {
