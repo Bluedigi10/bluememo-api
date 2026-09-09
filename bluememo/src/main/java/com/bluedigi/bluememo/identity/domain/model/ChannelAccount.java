@@ -15,4 +15,7 @@ public class ChannelAccount {
     private String externalUserId;
     private String externalChatId;
     private Instant linkedAt;
+    private Instant revokedAt;
+    private Instant consentedAt;
+    private String consentVersion;
 }

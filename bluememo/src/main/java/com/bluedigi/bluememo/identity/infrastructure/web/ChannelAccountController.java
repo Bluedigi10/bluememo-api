@@ -15,6 +15,12 @@ import com.bluedigi.bluememo.identity.infrastructure.web.request.CreateChannelLi
 import com.bluedigi.bluememo.identity.infrastructure.web.response.LinkChannelResponse;
 
 import lombok.AllArgsConstructor;
+import com.bluedigi.bluememo.identity.domain.model.ChannelAccount;
+import com.bluedigi.bluememo.identity.infrastructure.web.request.ChannelLinkConsentRequest;
+import jakarta.validation.Valid;
+import java.util.List;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 
 @RestController
 @AllArgsConstructor
@@ -22,9 +28,16 @@ import lombok.AllArgsConstructor;
 public class ChannelAccountController {
     private final ChannelAccountService channelAccountService;
 
+    @GetMapping("/link/channel/{channelType}")
+    public List<ChannelAccount> getLinks(
+            @PathVariable ChannelType channelType, @AuthenticationPrincipal UserDetails loggedUser) {
+        return channelAccountService.getLinks(loggedUser.getUsername(), channelType);
+    }
+
     @PostMapping ("/link/channel/{channelType}")
-    public ResponseEntity<LinkChannelResponse> generateChannelLink(@PathVariable ChannelType channelType, @AuthenticationPrincipal UserDetails loggedUser) {
-        CreateChannelLinkToken request = new CreateChannelLinkToken(loggedUser.getUsername(), channelType);
+    public ResponseEntity<LinkChannelResponse> generateChannelLink(@PathVariable ChannelType channelType, @AuthenticationPrincipal UserDetails loggedUser,
+            @Valid @RequestBody ChannelLinkConsentRequest consent) {
+        CreateChannelLinkToken request = new CreateChannelLinkToken(loggedUser.getUsername(), channelType, Boolean.TRUE.equals(consent.consent()));
         LinkChannelResponse response = channelAccountService.generateLink(request);
         return ResponseEntity.ok(response);
     }

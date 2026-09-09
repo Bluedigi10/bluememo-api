@@ -28,6 +28,8 @@ public class ChannelAccountMapper {
         entity.setChannelType(domain.getChannelType());
         entity.setTokenHash(domain.getTokenHash());
         entity.setExpiresAt(domain.getExpiresAt());
+        entity.setConsentedAt(domain.getConsentedAt());
+        entity.setConsentVersion(domain.getConsentVersion());
         return entity;
     }
 
@@ -39,6 +41,8 @@ public class ChannelAccountMapper {
         domain.setTokenHash(entity.getTokenHash());
         domain.setExpiresAt(entity.getExpiresAt());
         domain.setUsedAt(entity.getUsedAt() != null ? entity.getUsedAt() : null);
+        domain.setConsentedAt(entity.getConsentedAt());
+        domain.setConsentVersion(entity.getConsentVersion());
         return domain;
     }
 
@@ -49,6 +53,8 @@ public class ChannelAccountMapper {
         entity.setChannelType(domain.getChannelType());
         entity.setExternalUserId(domain.getExternalUserId());
         entity.setExternalChatId(domain.getExternalChatId());
+        entity.setConsentedAt(domain.getConsentedAt());
+        entity.setConsentVersion(domain.getConsentVersion());
         return entity;
     }
 

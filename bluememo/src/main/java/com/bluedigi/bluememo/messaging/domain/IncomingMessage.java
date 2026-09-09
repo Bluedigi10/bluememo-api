@@ -12,6 +12,7 @@ public record IncomingMessage(
     String senderId,
     String text,
     Instant sentDate,
-    String username
+    String username,
+    boolean privateConversation
 ) {
 }

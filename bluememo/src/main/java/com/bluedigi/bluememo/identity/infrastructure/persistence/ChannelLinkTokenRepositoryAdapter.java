@@ -14,6 +14,7 @@ import com.bluedigi.bluememo.identity.infrastructure.persistence.repository.Chan
 import com.bluedigi.bluememo.identity.infrastructure.persistence.repository.UserJpaRepository;
 
 import lombok.AllArgsConstructor;
+import com.bluedigi.bluememo.common.domain.ChannelType;
 
 @AllArgsConstructor
 @Repository
@@ -48,5 +49,10 @@ class ChannelLinkTokenRepositoryAdapter implements ChannelLinkTokenRepository {
     @Override
     public void deleteByUserId(UUID userId) {
         jpaRepository.deleteByUser_Id(userId);
+    }
+
+    @Override
+    public void invalidate(UUID userId, ChannelType channelType) {
+        jpaRepository.invalidate(userId, channelType.name());
     }
 }

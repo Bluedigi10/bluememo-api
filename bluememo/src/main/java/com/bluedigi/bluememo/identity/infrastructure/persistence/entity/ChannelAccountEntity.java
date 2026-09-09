@@ -43,4 +43,7 @@ public class ChannelAccountEntity {
     private String externalChatId;
     @CreationTimestamp
     private Instant linkedAt;
+    private Instant revokedAt;
+    private Instant consentedAt;
+    private String consentVersion;
 }

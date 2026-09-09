@@ -86,11 +86,11 @@ Never claim CI is green unless there is an actual successful CI run for the rele
 Active branch: `feat/BM-03-telegram-user-linking`
 
 Snapshot HEAD when this context was generated:
-`69321186830881bd6b8a408dc8299d137476768c` (`minor changes`)
+`930500e7825fd81124551db2c1d5b1b7b6e2250a` (`docs: record BM-03 account deletion and unlinking decisions`)
 
 Base in `main`:
 `ea61c45a1fa0cda23bb840dedb49d4e5f687f790` (BM-02 merged via PR #9)
 
-The BM-03 branch is 14 commits ahead of `main` and 0 behind at this snapshot.
+The BM-03 branch is 16 commits ahead of local `main` and 0 behind at this snapshot. `PROJECT_STATE.md` also describes current uncommitted implementation changes; do not mistake those for committed HEAD contents.
 
 If HEAD has moved, re-read the diff and update `docs/codex/PROJECT_STATE.md` before relying on this snapshot.

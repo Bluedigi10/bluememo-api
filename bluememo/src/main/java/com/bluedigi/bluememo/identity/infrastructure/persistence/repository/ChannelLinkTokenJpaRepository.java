@@ -20,7 +20,9 @@ public interface ChannelLinkTokenJpaRepository extends JpaRepository<ChannelLink
                 channel_type,
                 token_hash,
                 expires_at,
-                used_at
+                used_at,
+                consented_at,
+                consent_version
             )
             VALUES (
                 :#{#token.id},
@@ -28,13 +30,17 @@ public interface ChannelLinkTokenJpaRepository extends JpaRepository<ChannelLink
                 :#{#token.channelType.name()},
                 :#{#token.tokenHash},
                 :#{#token.expiresAt},
-                NULL
+                NULL,
+                :#{#token.consentedAt},
+                :#{#token.consentVersion}
             )
             ON CONFLICT ON CONSTRAINT uk_channel_type_user_channel
             DO UPDATE SET
                 token_hash = EXCLUDED.token_hash,
                 expires_at = EXCLUDED.expires_at,
-                used_at = NULL
+                used_at = NULL,
+                consented_at = EXCLUDED.consented_at,
+                consent_version = EXCLUDED.consent_version
             """, nativeQuery = true)
     int upsert(
         @Param("token") ChannelLinkTokenEntity token
@@ -50,4 +56,8 @@ public interface ChannelLinkTokenJpaRepository extends JpaRepository<ChannelLink
             """, nativeQuery = true)
     int markTokenAsUsed(@Param("tokenHash") String tokenHash);
     void deleteByUser_Id(UUID userId);
+
+    @Modifying
+    @Query(value = "UPDATE channel_link_tokens SET used_at = CURRENT_TIMESTAMP WHERE user_id = :userId AND channel_type = :channel AND used_at IS NULL", nativeQuery = true)
+    int invalidate(@Param("userId") UUID userId, @Param("channel") String channel);
 }

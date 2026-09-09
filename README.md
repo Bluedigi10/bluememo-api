@@ -11,6 +11,26 @@ BM-02 adds persistent idempotency for inbound Telegram updates and safe fragment
 
 ## Current Scope
 
+### BM-03 — Telegram identity linking (active)
+
+BM-03 links a Telegram identity to an existing JWT-authenticated BlueMemo user. It does not authorize Tools or personal provider actions. The current working implementation uses:
+
+| Method and path | Behavior |
+| --- | --- |
+| `POST /users/me/link/channel/TELEGRAM` | Requires JSON `{"consent":true}`. Returns `linkUrl` and `expirationDate`. Rejects an already active link with 409. |
+| `GET /users/me/link/channel/TELEGRAM` | Returns the authenticated user's association history, including `linkedAt`, `revokedAt`, `consentedAt` and `consentVersion`. A null `revokedAt` means active. |
+| `DELETE /users/me/unlink/channel/TELEGRAM` | Revokes the user's active Telegram association and invalidates outstanding Telegram link tokens; returns 204, including when already unlinked. |
+
+All three endpoints require a BlueMemo JWT. Consent version `1` means consent to associate the Telegram identity/conversation with the BlueMemo account for identity resolution; it is not permission to execute Tools. Clients must ask explicitly before sending `consent:true`.
+
+Open the returned deep link with the configured Telegram bot (`TELEGRAM_BOT_NAME`). Only a private-chat `/start <token>` can complete linking. The random 256-bit token expires in 10 minutes; only its SHA-256 hash is stored. An attempted link that reaches ownership checks consumes the token even if ownership conflicts prevent creation. External user and conversation are separate identifiers.
+
+Revocation preserves history and immediately stops identity resolution. Linking again requires a new token and explicit consent. Full BlueMemo account deletion removes all its tokens and associations/history, along with todos, in one transaction.
+
+Flyway V5 adds consent/revocation fields and active-only unique indexes without changing V4. It invalidates unused legacy tokens and leaves historical consent null rather than inventing consent. Existing active links remain active. Duplicate pre-existing active conversations must be reviewed before migration; V5 does not silently reassign ownership.
+
+`ChannelLinkIntegrationTest` verifies this flow with PostgreSQL Testcontainers and MockMvc, including concurrency, owner isolation, revocation, hash-only storage and cleanup rollback. Real dev-bot E2E and CI for the final commit remain required before BM-03 closure. See `docs/codex/PROJECT_STATE.md` and `docs/codex/DECISIONS.md`.
+
 ### Core API
 
 - User registration and login

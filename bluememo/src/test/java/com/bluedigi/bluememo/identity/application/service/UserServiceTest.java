@@ -33,6 +33,8 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
+import com.bluedigi.bluememo.identity.domain.repository.ChannelAccountRepository;
+import com.bluedigi.bluememo.identity.domain.repository.ChannelLinkTokenRepository;
 
 @ExtendWith(MockitoExtension.class)
 class UserServiceTest {
@@ -55,6 +57,12 @@ class UserServiceTest {
     private TodoRepository todoRepository;
 
     @Mock
+    private ChannelAccountRepository channelAccountRepository;
+
+    @Mock
+    private ChannelLinkTokenRepository channelLinkTokenRepository;
+
+    @Mock
     private PasswordEncoder passwordEncoder;
 
     private final UserMapper userMapper = new UserMapper();
@@ -67,7 +75,9 @@ class UserServiceTest {
                 userRepository,
                 todoRepository,
                 userMapper,
-                passwordEncoder
+                passwordEncoder,
+                channelAccountRepository,
+                channelLinkTokenRepository
         );
     }
 
@@ -117,6 +127,7 @@ class UserServiceTest {
         User user = createUser(userId);
         DeleteUserRequest request = new DeleteUserRequest(RAW_PASSWORD);
 
+        when(channelAccountRepository.lockUser(userId)).thenReturn(true);
         when(userRepository.findById(userId)).thenReturn(Optional.of(user));
         when(passwordEncoder.matches(RAW_PASSWORD, ENCODED_PASSWORD)).thenReturn(true);
 
@@ -124,7 +135,9 @@ class UserServiceTest {
 
         verify(passwordEncoder).matches(RAW_PASSWORD, ENCODED_PASSWORD);
 
-        InOrder deletionOrder = inOrder(todoRepository, userRepository);
+        InOrder deletionOrder = inOrder(channelAccountRepository, channelLinkTokenRepository, todoRepository, userRepository);
+        deletionOrder.verify(channelAccountRepository).deleteByUserId(userId);
+        deletionOrder.verify(channelLinkTokenRepository).deleteByUserId(userId);
         deletionOrder.verify(todoRepository).deleteTodosByUserId(userId);
         deletionOrder.verify(userRepository).deleteById(userId);
     }
@@ -134,8 +147,6 @@ class UserServiceTest {
         UUID userId = UUID.randomUUID();
         String userIdString = userId.toString();
         DeleteUserRequest request = new DeleteUserRequest(RAW_PASSWORD);
-
-        when(userRepository.findById(userId)).thenReturn(Optional.empty());
 
         ResponseStatusException exception = assertThrows(
                 ResponseStatusException.class,
@@ -154,6 +165,7 @@ class UserServiceTest {
         String userIdString = userId.toString();
         DeleteUserRequest request = new DeleteUserRequest("incorrect-password");
 
+        when(channelAccountRepository.lockUser(userId)).thenReturn(true);
         when(userRepository.findById(userId)).thenReturn(Optional.of(user));
         when(passwordEncoder.matches(request.password(), ENCODED_PASSWORD)).thenReturn(false);
 
@@ -164,7 +176,8 @@ class UserServiceTest {
 
         assertStatusException(exception, HttpStatus.UNAUTHORIZED, "Invalid password");
         verify(userRepository, never()).deleteById(any(UUID.class));
-        verifyNoInteractions(todoRepository);
+        verifyNoInteractions(todoRepository, channelLinkTokenRepository);
+        verify(channelAccountRepository, never()).deleteByUserId(any());
     }
 
     @Test

@@ -26,24 +26,37 @@ import com.bluedigi.bluememo.identity.infrastructure.web.request.CreateChannelLi
 import com.bluedigi.bluememo.identity.infrastructure.web.response.LinkChannelResponse;
 
 import lombok.AllArgsConstructor;
+import java.util.List;
 
 @AllArgsConstructor
 @Service
 public class ChannelAccountService {
     private static final SecureRandom SECURE_RANDOM = new SecureRandom();
+    public static final String CONSENT_VERSION = "1";
     private final ChannelLinkTokenRepository channelLinkTokenRepository;
     private final ChannelAccountRepository channelAccountRepository;
     private final ChannelAccountMapper channelAccountMapper;
     private final LinkProperties linkProperties;
 
+    @Transactional(readOnly = true)
+    public List<ChannelAccount> getLinks(String userId, ChannelType channelType) {
+        return channelAccountRepository.findByUserId(UUID.fromString(userId), channelType);
+    }
+
     @Transactional
     public void unlinkChannel(String userId, ChannelType channelType) {
         UUID userUUID = UUID.fromString(userId);
-        channelAccountRepository.deleteByUserIdAndChannelType(userUUID, channelType);
+        requireUserLock(userUUID);
+        channelLinkTokenRepository.invalidate(userUUID, channelType);
+        channelAccountRepository.revoke(userUUID, channelType);
     }
 
     @Transactional
     public LinkChannelResponse generateLink(CreateChannelLinkToken request) {
+        if (!request.consent()) {
+            throw new BluememoException("Se requiere consentimiento para vincular el canal", StatusCodeError.BAD_REQUEST.getStatusCode());
+        }
+        requireUserLock(UUID.fromString(request.userId()));
         boolean linkAccountExists = channelAccountRepository.existsByUserIdAndChannelType(UUID.fromString(request.userId()), request.channelType());
 
         if (linkAccountExists) {
@@ -57,6 +70,8 @@ public class ChannelAccountService {
         ChannelLinkToken channelLinkToken = channelAccountMapper.toDomain(request);
         channelLinkToken.setTokenHash(hashToken(token));
         channelLinkToken.setExpiresAt(expirationDate);
+        channelLinkToken.setConsentedAt(Instant.now());
+        channelLinkToken.setConsentVersion(CONSENT_VERSION);
 
         String linkUrl = generateLinkUrl(request.channelType(), token);
 
@@ -88,6 +103,14 @@ public class ChannelAccountService {
 
         UUID userId = existingToken.getUserId();
 
+        // Serialize generation, linking, unlinking and deletion for this BlueMemo user.
+        if (!channelAccountRepository.lockUser(userId)) {
+            return "Token inválido";
+        }
+        if (existingToken.getConsentedAt() == null || existingToken.getConsentVersion() == null) {
+            return "Token inválido";
+        }
+
         ChannelType channelType = existingToken.getChannelType();
 
         if (existingToken.getChannelType() != messageChannelType) {
@@ -99,6 +122,8 @@ public class ChannelAccountService {
         account.setChannelType(channelType);
         account.setExternalUserId(externalUserId);
         account.setExternalChatId(externalChatId);
+        account.setConsentedAt(existingToken.getConsentedAt());
+        account.setConsentVersion(existingToken.getConsentVersion());
 
         boolean isMarkedAsUsed = channelLinkTokenRepository.markTokenAsUsed(tokenHash);
 
@@ -117,8 +142,17 @@ public class ChannelAccountService {
             return "Este canal ya está vinculado a otra cuenta";
         }
 
-        channelAccountRepository.saveChannelLinkAccount(account);
+        // A concurrent ownership conflict must not abort the transaction and undo consumption.
+        if (!channelAccountRepository.insertIfAvailable(account)) {
+            return "El usuario o la conversación ya tiene una vinculación activa";
+        }
         return "Cuenta vinculada con éxito. ¡Bienvenido!";
+    }
+
+    private void requireUserLock(UUID userId) {
+        if (!channelAccountRepository.lockUser(userId)) {
+            throw new BluememoException("User not found", 404);
+        }
     }
 
     private String generateToken() {

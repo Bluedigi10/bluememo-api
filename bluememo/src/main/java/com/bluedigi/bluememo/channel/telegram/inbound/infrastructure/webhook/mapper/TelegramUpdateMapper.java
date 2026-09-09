@@ -23,7 +23,8 @@ public class TelegramUpdateMapper {
                 request.message().from().id().toString(),
                 request.message().text(),
                 toDate(request.message().date()),
-                request.message().from().username()
+                request.message().from().username(),
+                "private".equals(request.message().chat().type())
         );
     }
 

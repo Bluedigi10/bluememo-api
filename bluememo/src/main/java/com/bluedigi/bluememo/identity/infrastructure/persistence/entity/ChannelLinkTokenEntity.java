@@ -40,4 +40,6 @@ public class ChannelLinkTokenEntity {
     @Column (nullable = false)
     private Instant expiresAt;
     private Instant usedAt;
+    private Instant consentedAt;
+    private String consentVersion;
 }

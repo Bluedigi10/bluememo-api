@@ -40,6 +40,9 @@ public class UserService {
 
     @Transactional
     public void deleteUserById(String userId, DeleteUserRequest deleteUserRequest) {
+        if (!channelAccountRepository.lockUser(UUID.fromString(userId))) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found");
+        }
         User user = userRepository.findById(UUID.fromString(userId))
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
 

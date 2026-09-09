@@ -112,7 +112,7 @@ Note: current `generateLink` already prevents issuing a fresh token when the Blu
 
 ## Account deletion and channel unlinking — approved 2026-09-09
 
-These behaviors belong to BM-03; implementation and verification remain pending.
+These behaviors belong to BM-03. See PROJECT_STATE.md for implementation and verification status.
 
 - Deleting a BlueMemo account permanently deletes all its associated data, including todos, link tokens (also expired/used tokens), channel links, and linking/revocation history.
 - Follow the existing Todo cleanup pattern: explicitly remove dependent records before deleting the user, within the same transaction. Failure must roll back the entire deletion. Keep foreign keys as integrity protection.
@@ -120,7 +120,13 @@ These behaviors belong to BM-03; implementation and verification remain pending.
 - Linking another external account requires a new verified link-token flow. Pending tokens for the unlinked channel must not bypass that flow.
 - Account deletion and channel unlinking are separate use cases. Reuse internal operations only when their semantics match; do not reuse history-erasing account cleanup as unlinking.
 - BM-03 implements and verifies this for Telegram. References to WhatsApp describe future channel isolation, not authorization to implement WhatsApp now.
-- The physical representation of retained history is still an implementation/design question; this decision does not mandate deleting the active row versus retaining it with revoked state.
+- The user subsequently approved retaining associations with `revokedAt`, with uniqueness restricted to active rows, through a new migration.
+
+## Link contract and retained history — approved 2026-09-09
+
+- Keep `POST /users/me/link/channel/{channelType}` and add explicit consent; do not adopt the historical challenges route.
+- Preserve revoked associations in `channel_accounts` with `revokedAt`; constrain ownership uniqueness only for active rows using a new migration. Do not rewrite V4.
+- Code already uses the roadmap's 10-minute expiry as of `3bef44e`; the historical 15-minute discrepancy no longer exists.
 
 ## Naming note
 

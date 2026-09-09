@@ -9,6 +9,7 @@ public record CreateChannelLinkToken(
     @NotBlank
     String userId,
     @NotNull
-    ChannelType channelType
+    ChannelType channelType,
+    boolean consent
 ) {
 }

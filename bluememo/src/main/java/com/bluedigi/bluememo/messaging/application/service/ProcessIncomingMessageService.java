@@ -69,7 +69,7 @@ public class ProcessIncomingMessageService implements ProcessIncomingMessageUseC
         String command = parts[0];
         String token = parts.length > 1 ? parts[1] : null;
 
-         log.info("Processing command: {}", command);
+        log.info("Processing command: {}", MessageCommands.fromValue(command));
 
         return switch (MessageCommands.fromValue(command)) {
             case START -> processStart(message, token);
@@ -81,6 +81,10 @@ public class ProcessIncomingMessageService implements ProcessIncomingMessageUseC
     private String processStart(IncomingMessage message, String token) {
         if (token == null || token.isBlank()) {
             return "Bienvenido, soy un bot";
+        }
+
+        if (!message.privateConversation()) {
+            return "La vinculación solo está disponible en una conversación privada";
         }
 
         String externalUserId = message.senderId();

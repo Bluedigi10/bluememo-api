@@ -1,219 +1,63 @@
 # BlueMemo — Current Project State
 
-Snapshot generated from repository `Bluedigi10/bluememo-api`.
+## Verified Git baseline — 2026-09-09
 
-## Snapshot
+- Branch: `feat/BM-03-telegram-user-linking`.
+- HEAD: `930500e7825fd81124551db2c1d5b1b7b6e2250a` (`docs: record BM-03 account deletion and unlinking decisions`).
+- Commit time: 2026-09-09 06:52:24 UTC / 00:52:24 America/Mexico_City.
+- Local main: `ea61c45a1fa0cda23bb840dedb49d4e5f687f790`; HEAD is 16 ahead, 0 behind.
+- Working tree was clean at review start. AGENTS.md and docs/codex are now tracked.
+- No remote fetch or CI query was performed. Do not claim current CI is green.
+- Implementation below includes the current uncommitted BM-03 changes, not only HEAD.
 
-| Item | Value |
-| --- | --- |
-| Active branch | `feat/BM-03-telegram-user-linking` |
-| HEAD | `69321186830881bd6b8a408dc8299d137476768c` |
-| HEAD message | `minor changes` |
-| HEAD time | 2026-09-09 00:53:17 UTC / 2026-09-08 18:53:17 America/Mexico_City |
-| Main/base | `ea61c45a1fa0cda23bb840dedb49d4e5f687f790` |
-| Branch relation | 14 commits ahead, 0 behind `main` |
-| Active delivery | BM-03 — Telegram ↔ BlueMemo user linking |
-| CI for snapshot HEAD | No commit status/workflow run found; **not verified green** |
+## Closed deliveries and architecture
 
-If the current HEAD differs from this value, inspect the new commits and refresh this document before treating the implementation notes below as exact.
+BM-00, BM-01 (PR #8) and BM-02 (PR #9) remain closed. Existing behavior includes protected Telegram webhook, generic message routing, own RestClient Bot API wrapper, PostgreSQL event idempotency, status lifecycle, and ordered Unicode-safe outbound splitting in the Telegram adapter.
 
-## Closed deliveries
+Java 17, Spring Boot 4.1.0, Maven Wrapper, PostgreSQL/JPA, Flyway, MockMvc/MockWebServer, PostgreSQL Testcontainers and GitHub Actions remain the foundation. BM-03 is identity linking only; BM-04 authorization and later integrations remain out of scope.
 
-### BM-01 — Telegram inbound/outbound functional — CLOSED
-Merged through PR #8.
+## Changes already committed since the old snapshot
 
-Implemented baseline includes:
-- public `POST /webhooks/telegram`;
-- Telegram webhook-secret validation;
-- mapping Telegram updates to channel-independent messages;
-- generic processing and channel routing;
-- outbound Telegram Bot API calls via BlueMemo's own `RestClient` wrapper;
-- supported text/basic commands and safe handling of unsupported updates;
-- integration coverage with MockMvc/MockWebServer.
+`3bef44e` changed expiry to 10 minutes, removed the /start token argument from command logging, made missing-token lookup return Optional/normal reply, added explicit account-deletion cleanup, and added a physical unlink endpoint. `930500e` recorded deletion/unlinking decisions.
 
-### BM-02 — Telegram reliability — CLOSED
-Merged through PR #9 at `ea61c45`.
+The old 6932118 snapshot, 15-minute discrepancy, missing-token exception finding and missing unlink-endpoint statement are obsolete. The committed physical unlink did not preserve history or invalidate pending tokens, and UserServiceTest still used the old constructor.
 
-Implemented baseline includes:
-- persistent incoming-event registration;
-- idempotency on `(channel_type, external_event_id)` using PostgreSQL;
-- atomic duplicate protection;
-- incoming-event status lifecycle;
-- Telegram outbound splitting above 4096 Unicode code points;
-- code-point-aware splitting that does not cut surrogate pairs;
-- ordered sequential fragment delivery;
-- failure handling/status update when outbound sending fails;
-- Testcontainers-based persistence/integration foundation.
+## Current BM-03 working implementation
 
-Do not re-scope BM-01/BM-02 while completing BM-03.
+- `POST /users/me/link/channel/{channelType}` requires JWT ownership and JSON `{"consent":true}`. The user approved keeping this route rather than the historical challenges route.
+- Generation rejects an active user/channel link with 409, generates 256 random bits, stores SHA-256 only and returns the deep link plus `expirationDate` (10 minutes).
+- Consent version `1` and `consentedAt` are recorded with the token and copied to the verified association. Consent covers channel identity linking, not Tools authorization.
+- `/start <token>` accepts linking only in a private conversation. Telegram chat.type is interpreted in its adapter and represented by a channel-independent privateConversation boolean.
+- Missing/expired/replaced/used tokens receive normal invalid-token replies. Command logs contain only normalized enum values.
+- Token consumption remains a conditional SQL update before ownership checks. Account insertion uses `ON CONFLICT DO NOTHING` so ownership races produce controlled replies and commit consumption rather than rolling it back.
+- A PostgreSQL user-row lock coordinates generation, linking, unlinking and account deletion for each BlueMemo user. External ownership/conversation uniqueness remains database-enforced across users.
+- `DELETE /users/me/unlink/channel/{channelType}` revokes active associations and invalidates outstanding channel tokens, preserving the user, other channels and history. Re-linking requires a fresh verified token.
+- `GET /users/me/link/channel/{channelType}` returns only the authenticated user's association history; revokedAt distinguishes revoked from active entries.
+- `ChannelIdentityResolver` resolves an Optional BlueMemo UUID only when channel, external user and conversation all match an active association.
+- Account deletion explicitly deletes all associations/history and all tokens, then todos and user in one transaction.
 
-## Active implementation: BM-03
+## Persistence and migration
 
-BM-03 is **partially implemented**, not done.
+V4 is unchanged. V5 adds revoked_at and consent fields, replaces unconditional account ownership constraints with active-only unique indexes for user, external user and conversation, and invalidates unused pre-consent tokens.
 
-### Components currently present
+Existing associations retain null consent fields: migration does not fabricate historical consent. Existing active associations remain active. If existing data has duplicate active conversations, V5 fails rather than silently deleting or reassigning ownership; inspect actual deployed data before applying it.
 
-Identity module:
-- `identity/application/service/ChannelAccountService`
-- `identity/config/LinkProperties`
-- `identity/domain/model/ChannelAccount`
-- `identity/domain/model/ChannelLinkToken`
-- `identity/domain/repository/ChannelAccountRepository`
-- `identity/domain/repository/ChannelLinkTokenRepository`
-- persistence adapters/entities/JPA repositories/mappers
-- `identity/infrastructure/web/ChannelAccountController`
-- `CreateChannelLinkToken`
-- `LinkChannelResponse`
+Revoked associations retain linkedAt, revokedAt, consentedAt and consentVersion. Token upsert still replaces the previous token for a user/channel; it is not an issuance-history ledger.
 
-Shared/messaging changes:
-- `ChannelType` moved from `messaging.domain` to `common.domain`.
-- `MessageCommands` contains `/start`, `/help`, and fallback `UNKNOWN`.
-- `ProcessIncomingMessageService` parses `/start <token>` and delegates linking to `ChannelAccountService`.
-- `IncomingMessage` persists external sender and conversation separately (`senderId`, `conversationId`).
+## Verification and remaining work
 
-Persistence:
-- Flyway `V4__create_linkin_tables.sql` creates `channel_link_tokens` and `channel_accounts`.
+Dedicated ChannelLinkIntegrationTest covers consent/authentication, hash-only storage/expiry, invalid and replaced tokens, private-chat webhook/deduplication, safe logging, resolution consistency, owner isolation, revocation/fresh linking, same-token and external-ownership races, conversation conflicts, account cleanup and rollback on cleanup failure.
 
-Configuration:
-- `bluememo.link.telegram-url=https://t.me/`
-- `bluememo.link.telegram-bot-name=${TELEGRAM_BOT_NAME}`
-- Docker Compose now passes `TELEGRAM_BOT_NAME`.
+UserServiceTest was updated for cleanup dependencies and ordering. Final test results are recorded at the end of this document once verification finishes. No real dev-bot E2E or remote CI validation has been performed in this review. BM-03 is not declared closed.
 
-### Current HTTP flow
+Remaining release evidence includes dev-bot E2E, CI for the final commit, and any additional acceptance cases not covered by the checked-in suites (for example restart/context recreation and migration against representative pre-existing data).
 
-Implemented endpoint:
+The branch also retains an earlier unrelated Todo persistence-package spelling/format change; this work does not expand it.
 
-```text
-POST /users/me/link/channel/{channelType}
-```
+## Verification result — 2026-09-09
 
-The controller derives the BlueMemo user from `@AuthenticationPrincipal`; the client does not provide a Telegram identity as proof of ownership.
-
-Current generation behavior:
-1. Check whether `(userId, channelType)` is already linked.
-2. If linked, throw a controlled `409 CONFLICT` with `Ya tienes una cuenta vinculada a este canal`.
-3. Generate 32 random bytes with `SecureRandom` (256 bits).
-4. Base64URL-encode without padding.
-5. Hash the link token with SHA-256 and persist only the hash.
-6. Current code sets expiration to **15 minutes**.
-7. Build a Telegram deep link using configured bot name.
-8. Upsert the token by `(user_id, channel_type)`.
-
-The latest commit `6932118` specifically added:
-- `TELEGRAM_BOT_NAME` to Compose;
-- `CONFLICT(409)` to `StatusCodeError`;
-- prevention of generating a new link URL when the user already has that channel linked.
-
-### Current `/start <token>` flow
-
-`ProcessIncomingMessageService`:
-1. parses commands using whitespace split with a maximum of two parts;
-2. `/start` without token returns the normal welcome message;
-3. `/start <token>` passes:
-   - `senderId` as external Telegram user id;
-   - `conversationId` as external Telegram chat id;
-   - channel type;
-   - raw token;
-   to `ChannelAccountService.linkAccount(...)`.
-
-`ChannelAccountService.linkAccount(...)` currently:
-1. hashes the supplied token;
-2. loads the persisted token by hash;
-3. checks `usedAt == null` and `expiresAt > now` via the domain model;
-4. checks that the token's channel matches the message channel;
-5. atomically marks the token used only when unused and unexpired;
-6. only **after consuming the token**, checks whether the BlueMemo user/channel or Telegram external user/channel is already linked;
-7. saves `ChannelAccount` if no conflict exists.
-
-The consume-before-link-conflict ordering is intentional; see `DECISIONS.md`.
-
-### Database behavior currently implemented
-
-`channel_link_tokens`:
-- PK `id`;
-- FK `user_id -> users(id)`;
-- `channel_type`;
-- unique `token_hash`;
-- `expires_at`;
-- nullable `used_at`;
-- unique `(user_id, channel_type)`.
-
-`ChannelLinkTokenJpaRepository.upsert(...)` uses the `(user_id, channel_type)` constraint. Generating a replacement token for an unlinked account overwrites the previous hash/expiration and resets `used_at` to `NULL`.
-
-`markTokenAsUsed(...)` is atomic:
-- token hash must match;
-- `used_at IS NULL`;
-- `expires_at > CURRENT_TIMESTAMP`;
-- one updated row means successful consumption.
-
-`channel_accounts`:
-- PK `id`;
-- FK `user_id -> users(id)`;
-- `channel_type`;
-- `external_user_id`;
-- `external_chat_id`;
-- `linked_at` generated on creation;
-- unique `(channel_type, user_id)`;
-- unique `(external_user_id, channel_type)`.
-
-There is currently no active/revoked status, `revoked_at`, consent/version metadata, or uniqueness on `(external_chat_id, channel_type)`.
-
-## Known BM-03 gaps against approved roadmap v1.3
-
-These are gaps/divergences, not permission for Codex to redesign the feature by itself.
-
-### Missing behavior
-
-- Explicit consent at link-token creation is not implemented.
-- Consent timestamp/version is not persisted.
-- Private-chat enforcement is not implemented.
-  - Telegram request DTO already receives `chat.type`.
-  - `TelegramUpdateMapper` does not propagate `chat.type` into `IncomingMessage`.
-  - linking therefore cannot currently enforce `chat.type == private`.
-- Link status/list endpoint is not implemented.
-- Link revocation endpoint is not implemented.
-- Revoked-link history/state is not modeled.
-- Identity resolver port (`ChannelType + external user + external conversation -> Optional<UUID>`) is not implemented.
-- Active-link consistency using both external user and external conversation is not implemented.
-- Database uniqueness/consistency for external conversation is not present.
-- Re-linking after revocation cannot be supported because revocation is not modeled.
-- BM-03-specific unit/integration/persistence/concurrency tests are not present in the current test tree.
-- README still documents BM-01 and BM-02 as current scope and does not document BM-03.
-- End-to-end BM-03 evidence is not represented in repository CI/artifacts.
-
-### Explicit divergences requiring a verdict, not silent correction
-
-1. **Token expiration**
-   - Roadmap v1.3: 10 minutes.
-   - Current code: 15 minutes.
-   - Do not silently change either direction. Surface this when completing the DoD.
-
-2. **Creation endpoint shape**
-   - Roadmap contract: `POST /users/me/channel-links/telegram/challenges` with explicit consent.
-   - Current code: `POST /users/me/link/channel/{channelType}` without consent payload.
-   - Treat current endpoint as implemented reality; changing the public contract requires an explicit decision.
-
-3. **Persistence naming/model**
-   - Roadmap concept names: `channel_link_challenges`, `channel_links` with consent/revocation/history.
-   - Current code: `channel_link_tokens`, `channel_accounts` with a simpler model.
-   - Do not rename tables merely to match old wording. Evaluate required behavior first and preserve migration safety.
-
-## Test/verification status at snapshot
-
-Existing test tree contains the BM-01/BM-02 tests plus existing identity/todo tests, but no `ChannelAccountServiceTest` or dedicated BM-03 persistence/integration suite was found.
-
-GitHub returned no commit status and no pull-request workflow run for HEAD `6932118`. Therefore:
-
-**Do not say BM-03 or the latest commit is CI-verified.**
-
-CI configuration runs from `bluememo/` with:
-
-```bash
-./mvnw --batch-mode --no-transfer-progress clean verify
-```
-
-and triggers on pushes to `main`, pull requests targeting `main`, or manual dispatch.
-
-## Current README caveat
-
-The branch README accurately describes BM-01/BM-02, but currently omits BM-03. For active BM-03 decisions/state, prefer this file + `ACTIVE_BM03.md` + approved roadmap/decision records over the README until it is updated as part of BM-03 DoD.
+- Focused UserServiceTest + ChannelLinkIntegrationTest: 25 tests, 0 failures/errors/skips.
+- `mvnw.cmd --batch-mode --no-transfer-progress clean verify`: BUILD SUCCESS, 103 tests, 0 failures/errors/skips (including 13 dedicated BM-03 integration tests), PostgreSQL 17 via Testcontainers.
+- The first integration attempt could not find Docker; after starting Docker Desktop, both the focused and full runs passed.
+- After the successful run only import ordering/whitespace and documentation were adjusted; no behavioral changes were made.
+- No CI run, deployment or real Telegram dev-bot E2E was performed. Changes remain uncommitted.
