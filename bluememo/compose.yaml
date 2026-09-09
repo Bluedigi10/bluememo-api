@@ -1,6 +1,6 @@
 services:
   api:
-    build: 
+    build:
       context: .
       dockerfile: Dockerfile
     container_name: bluememo-api
@@ -14,6 +14,7 @@ services:
       JWT_SECRET: ${JWT_SECRET}
       TELEGRAM_WEBHOOK_SECRET: ${TELEGRAM_WEBHOOK_SECRET}
       TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN}
+      TELEGRAM_BOT_NAME: ${TELEGRAM_BOT_NAME}
     depends_on:
       database:
         condition: service_healthy

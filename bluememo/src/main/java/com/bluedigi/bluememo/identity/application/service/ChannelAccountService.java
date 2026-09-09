@@ -37,6 +37,11 @@ public class ChannelAccountService {
 
     @Transactional
     public LinkChannelResponse generateLink(CreateChannelLinkToken request) {
+        boolean linkAccountExists = channelAccountRepository.existsByUserIdAndChannelType(UUID.fromString(request.userId()), request.channelType());
+
+        if (linkAccountExists) {
+            throw new BluememoException("Ya tienes una cuenta vinculada a este canal", StatusCodeError.CONFLICT.getStatusCode());
+        }
         Duration expirationDuration = Duration.ofMinutes(15);
 
         String token = generateToken();
