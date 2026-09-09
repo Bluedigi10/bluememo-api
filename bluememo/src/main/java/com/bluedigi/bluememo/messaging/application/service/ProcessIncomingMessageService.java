@@ -65,11 +65,11 @@ public class ProcessIncomingMessageService implements ProcessIncomingMessageUseC
             return "Recibí " + text;
         }
 
-        log.info("Processing command: {}", text);
-
         String[] parts = extractCommandFromMessage(text);
         String command = parts[0];
         String token = parts.length > 1 ? parts[1] : null;
+
+         log.info("Processing command: {}", command);
 
         return switch (MessageCommands.fromValue(command)) {
             case START -> processStart(message, token);

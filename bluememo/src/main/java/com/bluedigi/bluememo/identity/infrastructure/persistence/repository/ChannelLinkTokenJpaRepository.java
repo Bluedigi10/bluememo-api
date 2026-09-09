@@ -49,4 +49,5 @@ public interface ChannelLinkTokenJpaRepository extends JpaRepository<ChannelLink
             AND expires_at > CURRENT_TIMESTAMP
             """, nativeQuery = true)
     int markTokenAsUsed(@Param("tokenHash") String tokenHash);
+    void deleteByUser_Id(UUID userId);
 }

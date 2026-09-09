@@ -10,4 +10,6 @@ import com.bluedigi.bluememo.identity.infrastructure.persistence.entity.ChannelA
 public interface ChannelAccountJpaRepository extends JpaRepository<ChannelAccountEntity, UUID> {
     boolean existsByUser_IdAndChannelType(UUID userId, ChannelType channelType);
     boolean existsByExternalUserIdAndChannelType(String externalUserId, ChannelType channelType);
+    void deleteByUser_IdAndChannelType(UUID userId, ChannelType channelType);
+    void deleteByUser_Id(UUID userId);
 }

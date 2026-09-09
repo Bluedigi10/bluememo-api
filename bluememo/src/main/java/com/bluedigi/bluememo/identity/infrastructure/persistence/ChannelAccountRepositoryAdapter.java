@@ -44,4 +44,14 @@ public class ChannelAccountRepositoryAdapter implements ChannelAccountRepository
         return channelAccountJpaRepository.existsByExternalUserIdAndChannelType(externalUserId, channelType);
     }
 
+    @Override
+    public void deleteByUserIdAndChannelType(UUID userId, ChannelType channelType) {
+        channelAccountJpaRepository.deleteByUser_IdAndChannelType(userId, channelType);
+    }
+
+    @Override
+    public void deleteByUserId(UUID userId) {
+        channelAccountJpaRepository.deleteByUser_Id(userId);
+    }
+
 }

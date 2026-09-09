@@ -7,6 +7,7 @@ import java.security.SecureRandom;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.Base64;
+import java.util.Optional;
 import java.util.UUID;
 
 import org.springframework.stereotype.Service;
@@ -36,13 +37,19 @@ public class ChannelAccountService {
     private final LinkProperties linkProperties;
 
     @Transactional
+    public void unlinkChannel(String userId, ChannelType channelType) {
+        UUID userUUID = UUID.fromString(userId);
+        channelAccountRepository.deleteByUserIdAndChannelType(userUUID, channelType);
+    }
+
+    @Transactional
     public LinkChannelResponse generateLink(CreateChannelLinkToken request) {
         boolean linkAccountExists = channelAccountRepository.existsByUserIdAndChannelType(UUID.fromString(request.userId()), request.channelType());
 
         if (linkAccountExists) {
             throw new BluememoException("Ya tienes una cuenta vinculada a este canal", StatusCodeError.CONFLICT.getStatusCode());
         }
-        Duration expirationDuration = Duration.ofMinutes(15);
+        Duration expirationDuration = Duration.ofMinutes(10);
 
         String token = generateToken();
         Instant expirationDate = Instant.now().plus(expirationDuration);
@@ -67,7 +74,13 @@ public class ChannelAccountService {
 
         String tokenHash = hashToken(token);
 
-        ChannelLinkToken existingToken = channelLinkTokenRepository.findByTokenHash(tokenHash);
+        Optional<ChannelLinkToken> tokenFound = channelLinkTokenRepository.findByTokenHash(tokenHash);
+
+        if (tokenFound.isEmpty()) {
+            return "Token inválido";
+        }
+
+        ChannelLinkToken existingToken = tokenFound.get();
 
         if (!existingToken.isValidAt(Instant.now())) {
             return "Token inválido";

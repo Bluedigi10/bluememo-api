@@ -1,11 +1,10 @@
 package com.bluedigi.bluememo.identity.infrastructure.persistence;
 
+import java.util.Optional;
 import java.util.UUID;
 
 import org.springframework.stereotype.Repository;
 
-import com.bluedigi.bluememo.common.exception.BluememoException;
-import com.bluedigi.bluememo.common.exception.StatusCodeError;
 import com.bluedigi.bluememo.identity.domain.model.ChannelLinkToken;
 import com.bluedigi.bluememo.identity.domain.repository.ChannelLinkTokenRepository;
 import com.bluedigi.bluememo.identity.infrastructure.persistence.entity.ChannelLinkTokenEntity;
@@ -40,10 +39,14 @@ class ChannelLinkTokenRepositoryAdapter implements ChannelLinkTokenRepository {
     }
 
     @Override
-    public ChannelLinkToken findByTokenHash(String tokenHash) {
-        ChannelLinkTokenEntity entity = jpaRepository.findByTokenHash(tokenHash)
-        .orElseThrow(() -> new BluememoException("Token inválido", StatusCodeError.BAD_REQUEST.getStatusCode()));
+    public Optional<ChannelLinkToken> findByTokenHash(String tokenHash) {
+        Optional<ChannelLinkTokenEntity> entity = jpaRepository.findByTokenHash(tokenHash);
 
-        return mapper.toDomain(entity);
+        return entity.map(mapper::toDomain);
+    }
+
+    @Override
+    public void deleteByUserId(UUID userId) {
+        jpaRepository.deleteByUser_Id(userId);
     }
 }
