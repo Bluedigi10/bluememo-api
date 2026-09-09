@@ -110,6 +110,18 @@ Note: current `generateLink` already prevents issuing a fresh token when the Blu
 - Fragments remain ordered and target the same chat.
 - Failed outbound delivery must retain the agreed failure/status behavior.
 
+## Account deletion and channel unlinking — approved 2026-09-09
+
+These behaviors belong to BM-03; implementation and verification remain pending.
+
+- Deleting a BlueMemo account permanently deletes all its associated data, including todos, link tokens (also expired/used tokens), channel links, and linking/revocation history.
+- Follow the existing Todo cleanup pattern: explicitly remove dependent records before deleting the user, within the same transaction. Failure must roll back the entire deletion. Keep foreign keys as integrity protection.
+- Unlinking affects only the selected channel's active association. Preserve the BlueMemo account, other channels, and the linking/revocation history. The revoked association must stop resolving identity immediately.
+- Linking another external account requires a new verified link-token flow. Pending tokens for the unlinked channel must not bypass that flow.
+- Account deletion and channel unlinking are separate use cases. Reuse internal operations only when their semantics match; do not reuse history-erasing account cleanup as unlinking.
+- BM-03 implements and verifies this for Telegram. References to WhatsApp describe future channel isolation, not authorization to implement WhatsApp now.
+- The physical representation of retained history is still an implementation/design question; this decision does not mandate deleting the active row versus retaining it with revoked state.
+
 ## Naming note
 
 Historical roadmap text uses **challenge** for the link flow. Current implementation uses `ChannelLinkToken` / `channel_link_tokens`.

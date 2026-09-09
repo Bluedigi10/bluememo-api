@@ -146,6 +146,15 @@ Legend: ✅ implemented in current branch; 🟡 partial/divergent; ❌ not imple
 | README updated for BM-03 | ❌ | README currently stops at BM-02 scope. |
 | End-to-end link with dev bot verified/reproducible | ❌ repository evidence | Do not infer closure from implementation alone. |
 
+## Approved deletion/unlinking scope — 2026-09-09
+
+See [DECISIONS.md](DECISIONS.md#account-deletion-and-channel-unlinking--approved-2026-09-09). This is BM-03 work, not a later hardening delivery; it remains pending implementation and verification.
+
+- Full BlueMemo account deletion explicitly removes all user-owned dependent data, including link tokens, channel associations and their history, before the user, in one transaction, following the existing Todo cleanup pattern.
+- Channel unlinking removes only the selected channel's active association and preserves its history, the BlueMemo account and other channels. Identity resolution stops immediately; subsequent linking requires a new verified flow.
+- Keep the two use cases separate; share only operations with matching semantics. Telegram is the implementation scope for this delivery.
+- Required persistence tests: deletion with an outstanding/expired/used token; deletion with active and revoked links/history; no associated records left after successful deletion; rollback on cleanup failure; unlinking preserves history and unrelated data; revoked identity no longer resolves; pending tokens cannot restore the revoked link; a fresh verified flow can link another Telegram account.
+
 ## Minimum test matrix still expected
 
 When the user asks to finish/test BM-03, preserve at least these cases:
