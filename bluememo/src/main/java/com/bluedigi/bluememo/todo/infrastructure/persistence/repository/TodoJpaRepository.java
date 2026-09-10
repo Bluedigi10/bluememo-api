@@ -1,4 +1,4 @@
-package com.bluedigi.bluememo.todo.infrastructure.persistance.repository;
+package com.bluedigi.bluememo.todo.infrastructure.persistence.repository;
 
 import java.util.UUID;
 
@@ -8,7 +8,8 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 
 import com.bluedigi.bluememo.todo.domain.model.TodoStatus;
-import com.bluedigi.bluememo.todo.infrastructure.persistance.entity.TodoEntity;
+import com.bluedigi.bluememo.todo.infrastructure.persistence.entity.TodoEntity;
+
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 

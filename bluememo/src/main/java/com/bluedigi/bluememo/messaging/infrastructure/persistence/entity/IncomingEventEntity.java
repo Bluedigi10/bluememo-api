@@ -3,8 +3,8 @@ package com.bluedigi.bluememo.messaging.infrastructure.persistence.entity;
 import java.time.Instant;
 import java.util.UUID;
 
-import com.bluedigi.bluememo.messaging.domain.ChannelType;
-import com.bluedigi.bluememo.messaging.domain.IncomingEventStatus;
+import com.bluedigi.bluememo.common.domain.ChannelType;
+import com.bluedigi.bluememo.messaging.domain.enums.IncomingEventStatus;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
