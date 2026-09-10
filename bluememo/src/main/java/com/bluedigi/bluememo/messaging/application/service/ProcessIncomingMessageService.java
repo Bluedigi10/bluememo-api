@@ -109,7 +109,7 @@ public class ProcessIncomingMessageService implements ProcessIncomingMessageUseC
                 message.conversationId());
 
         return linked
-                ? "Tu cuenta de %s está vinculada a BlueMemo.".formatted(message.channelType().name())
-                : "Tu cuenta de %s no está vinculada a BlueMemo.".formatted(message.channelType().name());
+                ? "Tu cuenta de %s está vinculada a BlueMemo.".formatted(message.channelType().getLabel())
+                : "Tu cuenta de %s no está vinculada a BlueMemo.".formatted(message.channelType().getLabel());
     }
 }
