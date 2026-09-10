@@ -10,12 +10,12 @@ Based on the latest approved roadmap for the project. This file records delivery
 | BM-01 | Telegram inbound/outbound functional | ✅ Closed |
 | BM-02 | Telegram operational reliability | ✅ Closed |
 | BM-03 | Telegram ↔ BlueMemo user linking | ✅ Closed |
-| BM-04 | Tools architecture + execution context | ⏭️ Next |
+| BM-04 | Tools architecture + execution context | 🟠 Active |
 | BM-05–BM-22 | Later roadmap | ⚪ Pending |
 
 BM-03 is closed after implementation, automated verification, real Telegram DEV E2E, revocation/relinking, migration/restart validation, review resolution, PR #10 merge and successful CI on `main`.
 
-BM-04 is the next planned delivery but should not be treated as started until the user explicitly begins it.
+BM-04 started on September 10, 2026. Its working branch is `feat/BM-04-tools-execution-context`. The delivery must establish trusted identity, authorization, idempotency for effectful Tool actions, and normalized Tool errors before Calendar/Tasks writes are enabled.
 
 ## Delivery sequence
 
@@ -53,7 +53,7 @@ Closed by BM-02.
 Completed by BM-03. Telegram can now resolve to a verified/revocable BlueMemo identity, but this does not authorize personal Tool actions.
 
 ### Gate B — Authorized personal actions
-Not closed. BM-04 must establish authorization/execution context before personal Tool writes.
+Open. BM-04 is active and must establish authorization/execution context before personal Tool writes.
 
 ### Gate C — Integration/synchronization
 Must be closed by BM-09.
