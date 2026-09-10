@@ -39,11 +39,21 @@ public class ProcessIncomingMessageService implements ProcessIncomingMessageUseC
                     message.conversationId(),
                     reply
             );
+
             sender.send(toSend);
             updateStatus(message, IncomingEventStatus.ANSWERED);
+
         } catch (RuntimeException exception) {
-            updateStatus(message, IncomingEventStatus.FAILED);
-            throw new MessageException(StatusCodeError.INTERNAL_SERVER_ERROR.getStatusCode(), exception);
+            try {
+                updateStatus(message, IncomingEventStatus.FAILED);
+            } catch (RuntimeException statusException) {
+                exception.addSuppressed(statusException);
+            }
+
+            throw new MessageException(
+                    StatusCodeError.INTERNAL_SERVER_ERROR.getStatusCode(),
+                    exception
+            );
         }
     }
 
@@ -99,7 +109,7 @@ public class ProcessIncomingMessageService implements ProcessIncomingMessageUseC
                 message.conversationId());
 
         return linked
-                ? "Tu cuenta de Telegram está vinculada a BlueMemo."
-                : "Tu cuenta de Telegram no está vinculada a BlueMemo.";
+                ? "Tu cuenta de %s está vinculada a BlueMemo.".formatted(message.channelType().name())
+                : "Tu cuenta de %s no está vinculada a BlueMemo.".formatted(message.channelType().name());
     }
 }
