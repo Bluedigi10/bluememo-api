@@ -21,7 +21,7 @@ Current technical baseline:
 ## Read before changing code
 
 For any non-trivial task, read:
-1. `docs/codex/PROJECT_STATE.md` — exact repository snapshot and known gaps.
+1. `docs/codex/PROJECT_STATE.md` — current repository state, verification anchors, known gaps and PR closure status.
 2. `docs/codex/DECISIONS.md` — approved architectural/product invariants.
 3. `docs/codex/ACTIVE_BM03.md` when working on Telegram↔BlueMemo linking.
 4. `docs/codex/ROADMAP.md` when a change may affect scope, delivery order, or future modules.
@@ -49,6 +49,7 @@ Do not introduce BM-04+ concerns (Tools authorization, Google OAuth, Calendar/Ta
 
 - Evolve the existing API incrementally; do not rewrite it.
 - Keep external channels as adapters. Telegram-specific protocol/API behavior must not leak into generic application/domain contracts unless the concept is genuinely channel-independent.
+- Telegram command strings are interpreted in the Telegram adapter and converted to channel-independent `IncomingAction` values before shared message processing.
 - `ChannelType` currently lives in `com.bluedigi.bluememo.common.domain` and is shared across identity and messaging.
 - BlueMemo owns its user identity. Telegram is linked to a BlueMemo user; it does not replace BlueMemo authentication.
 - Telegram integration uses BlueMemo's own webhook handling and Bot API wrapper (`RestClient`); do not add a Telegram SDK such as `telegrambots` unless explicitly approved.
@@ -68,7 +69,7 @@ The roadmap historically calls the one-time credential a "challenge". Current co
 ## Required work discipline
 
 Before editing:
-- inspect current branch, HEAD, working tree, and relevant diff;
+- inspect current branch, HEAD, working tree, relevant PR and relevant diff;
 - inspect the existing implementation before proposing a fix;
 - identify the affected use case and tests.
 
@@ -81,18 +82,18 @@ After editing:
 
 Never claim CI is green unless there is an actual successful CI run for the relevant commit/PR.
 
-## Current snapshot anchor
+## Current state anchor
 
 Active branch: `feat/BM-03-telegram-user-linking`
 
-Snapshot HEAD when this context was generated:
-`657fb6093e0fd89f716348b30b9d6de55b61e737` (`minor change`)
+Base in `main` for the open BM-03 PR:
+`ea61c45a1fa0cda23bb840dedb49d4e5f687f790` (BM-02 merged via PR #9).
 
-Base in `main`:
-`ea61c45a1fa0cda23bb840dedb49d4e5f687f790` (BM-02 merged via PR #9)
+Functional verification anchor before the latest documentation refresh:
+`745a980a02b3fd86b593f80722af3a1a53a0b12f` (`added test and updated documentation`).
 
-The BM-03 branch is 21 commits ahead of local `main` and 0 behind at this snapshot. `PROJECT_STATE.md` also describes 20 additional uncommitted test cases and documentation updates; do not mistake those for committed HEAD contents.
+At that anchor, local verification covered 123 tests with zero failures/errors/skips and GitHub Actions CI run #30 completed successfully for that exact SHA. Real Telegram DEV E2E, revocation, pending-token invalidation, fresh relinking, retained history and application restart persistence were also verified by the user and are recorded in `docs/codex/PROJECT_STATE.md`.
 
-BM-03 core functionality has local automated verification and user-reported real DEV bot/restart evidence. PR review resolution and successful CI for the final HEAD remain closure work. The reported successful CI for `0217b00` must not be attributed to a later commit.
+Do not use a versioned documentation file as a live HEAD pointer: updating the file creates a newer commit. Before future reviews, query the branch/PR directly and use `PROJECT_STATE.md` for behavior/evidence context rather than assuming its recorded SHA is the current tip.
 
-If HEAD has moved, re-read the diff and update `docs/codex/PROJECT_STATE.md` before relying on this snapshot.
+BM-03 remains active until PR #10 is merged. After merge, update the project docs so BM-03 is closed and BM-04 becomes the active delivery.
