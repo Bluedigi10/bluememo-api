@@ -1,6 +1,6 @@
 # BlueMemo — Roadmap Context
 
-Based on the latest project roadmap available when this Codex context was generated: **Roadmap v1.3 — Telegram Identity (2026-09-01)**.
+Based on the latest approved roadmap available for this project: **Roadmap v1.3 — Telegram Identity (2026-09-01)**.
 
 This is scope context, not permission to implement future BMs early.
 
@@ -11,10 +11,10 @@ This is scope context, not permission to implement future BMs early.
 | BM-00 | Audit existing `bluememo-api` base | ✅ Closed |
 | BM-01 | Telegram inbound/outbound functional | ✅ Closed — PR #8 |
 | BM-02 | Telegram operational reliability | ✅ Closed — PR #9 / `ea61c45` |
-| BM-03 | Telegram ↔ BlueMemo user linking | 🟠 Active |
+| BM-03 | Telegram ↔ BlueMemo user linking | 🟠 Active — implemented/verified, PR #10 merge pending |
 | BM-04–BM-22 | Later roadmap | ⚪ Pending |
 
-BM-03 progress (2026-09-10): core functionality is verified by local automated tests and user-reported real Telegram DEV/restart evidence. It remains active pending PR review resolution and CI for the final HEAD; this update does not close BM-03 or advance BM-04. See [PROJECT_STATE.md](PROJECT_STATE.md#bm-03--verification-evidence) for evidence and the commit-specific CI limitation.
+BM-03 progress (2026-09-10): implementation, automated verification, real Telegram DEV E2E, revocation/relink, pending-token invalidation, migration fixtures and application-restart persistence have been verified. GitHub Actions CI run #30 succeeded for functional anchor `745a980a`. PR #10 remains open; before closure, confirm the current PR HEAD still has green CI and no blocking review findings, then merge. BM-04 must not start before BM-03 is closed.
 
 ## Delivery sequence
 
