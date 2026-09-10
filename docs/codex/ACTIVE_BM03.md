@@ -1,6 +1,6 @@
 # BM-03 — Telegram ↔ BlueMemo User Linking
 
-Status: **ACTIVE / IMPLEMENTED CHANGES UNDER VERIFICATION**
+Status: **ACTIVE / CORE FUNCTIONALITY VERIFIED; PR CLOSURE PENDING**
 
 Read PROJECT_STATE.md for the verified HEAD, current working changes and test results; read DECISIONS.md for authority and invariants. BM-01/BM-02 remain closed. BM-03 does not authorize Tools or introduce BM-04+ concerns.
 
@@ -30,11 +30,14 @@ Read PROJECT_STATE.md for the verified HEAD, current working changes and test re
 | Delete account | Explicit dependent cleanup and user deletion in one transaction |
 | Migration safety | New V5; V4 unchanged; legacy pending tokens invalidated |
 | Tests | Dedicated PostgreSQL/MockMvc BM-03 suite plus existing regression suites; see PROJECT_STATE.md for outcomes |
-| Real bot E2E / current CI | Not verified in this session |
+| Real DEV bot and application restart | Verified manually by the user; detailed sequence in PROJECT_STATE.md |
+| CI | User reports PR #10 run #27 success for 0217b00; final HEAD CI still required |
 
 ## Acceptance evidence still needed before closure
 
-Do not infer completion from code alone. Verify final clean verify, CI for the actual commit, a reproducible real dev-bot linking/unlinking flow, and persistence after restart. Review representative existing data for V5, especially ambiguous conversations. Tests must preserve the consume-before-conflict decision and cover isolation, invalid tokens, private chat, consent, revocation, new linking, account cleanup and rollback.
+The latest local clean verify passed 123 tests, including application-context recreation and V4-to-V5 migration against representative fixtures. The user also verified real DEV bot linking, status inspection, revocation, pending-token invalidation, fresh linking, retained history and persistence after application restart. Preserve this evidence; these items are no longer generic pending tasks.
+
+Before closure, resolve or confirm resolution of the PR review findings and obtain successful CI for the final PR HEAD, including the additional tests currently uncommitted. The supplied successful CI run applies to 0217b00. This documentation update does not independently establish the current state of review comments or close BM-03. The acceptance matrix below remains unchanged.
 
 Historical documentation claiming absent revocation endpoints, missing-token HTTP 400, raw /start argument logging or a 15-minute expiry no longer describes the current working tree. Historical table names in roadmap v1.3 are terminology, not instructions to rename implementation artifacts.
 
@@ -43,7 +46,7 @@ Historical documentation claiming absent revocation endpoints, missing-token HTT
 Preserve these acceptance cases. Some now have automated coverage; see PROJECT_STATE.md. This list is not a claim that every case is verified:
 
 - link creation rejects unauthenticated request;
-- explicit consent behavior once its contract is approved;
+- explicit consent under the approved consent=true contract;
 - generated token has sufficient entropy and persisted value is hash-only;
 - token expires according to the approved duration;
 - valid `/start <token>` from private chat creates exactly the intended link;

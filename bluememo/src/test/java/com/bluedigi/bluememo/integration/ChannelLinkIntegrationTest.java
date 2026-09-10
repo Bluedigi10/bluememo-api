@@ -96,12 +96,69 @@ class ChannelLinkIntegrationTest {
     }
 
     private void webhook(long event, String chatType, String token) throws Exception {
+        command(event, chatType, "/start " + token, 123, 456);
+    }
+
+    private void command(long event, String chatType, String text, long senderId, long chatId) throws Exception {
         String body = """
                 {"update_id":%d,"message":{"message_id":1,"date":1788937200,
-                "text":"/start %s","from":{"id":123},"chat":{"id":456,"type":"%s"}}}
-                """.formatted(event, token, chatType);
+                "text":"%s","from":{"id":%d},"chat":{"id":%d,"type":"%s"}}}
+                """.formatted(event, text, senderId, chatId, chatType);
         mvc.perform(post("/webhooks/telegram").header("X-Telegram-Bot-Api-Secret-Token", "test-webhook-secret")
                 .contentType("application/json").content(body)).andExpect(status().isOk());
+    }
+
+    @Test
+    void checkLinkReflectsLinkRevocationAndFreshLinkWithoutExposingIdentity(CapturedOutput output) throws Exception {
+        UUID user = user();
+        command(10, "private", "/check-link", 123, 456);
+        String firstToken = token(user);
+        webhook(11, "private", firstToken);
+        command(12, "private", "/check-link", 123, 456);
+        command(12, "private", "/check-link", 123, 456);
+        links.unlinkChannel(user.toString(), CHANNEL);
+        command(13, "private", "/check-link", 123, 456);
+        String freshToken = token(user);
+        webhook(14, "private", freshToken);
+        command(15, "private", "/check-link", 123, 456);
+
+        var replies = ArgumentCaptor.forClass(OutgoingMessage.class);
+        verify(sender, times(6)).send(replies.capture());
+        var texts = replies.getAllValues().stream().map(OutgoingMessage::text).toList();
+        assertThat(texts.get(0)).isEqualTo("Tu cuenta de Telegram no está vinculada a BlueMemo.");
+        assertThat(texts.get(2)).isEqualTo("Tu cuenta de Telegram está vinculada a BlueMemo.");
+        assertThat(texts.get(3)).isEqualTo(texts.get(0));
+        assertThat(texts.get(5)).isEqualTo(texts.get(2));
+        assertThat(texts).allSatisfy(text -> assertThat(text).doesNotContain(user.toString(), firstToken, freshToken));
+        assertThat(output.getAll()).doesNotContain(firstToken, freshToken);
+        assertThat(count("channel_accounts")).isEqualTo(2);
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM incoming_events WHERE status = 'ANSWERED'", Integer.class)).isEqualTo(6);
+    }
+
+    @Test
+    void checkLinkRequiresMatchingSenderAndConversationAndDoesNotConsumePendingToken() throws Exception {
+        links.linkAccount("123", CHANNEL, "456", token(user()));
+        UUID other = user();
+        token(other);
+        command(20, "private", "/check-link", 123, 789);
+        command(21, "private", "/check-link", 789, 456);
+        var replies = ArgumentCaptor.forClass(OutgoingMessage.class);
+        verify(sender, times(2)).send(replies.capture());
+        assertThat(replies.getAllValues()).allSatisfy(reply ->
+                assertThat(reply.text()).isEqualTo("Tu cuenta de Telegram no está vinculada a BlueMemo."));
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM channel_link_tokens WHERE used_at IS NULL", Integer.class)).isEqualTo(1);
+        assertThat(resolver.resolve(CHANNEL, "123", "456")).isPresent();
+    }
+
+    @org.junit.jupiter.params.ParameterizedTest
+    @org.junit.jupiter.params.provider.ValueSource(strings = {"group", "supergroup", "channel"})
+    void checkLinkDoesNotRevealStatusOutsidePrivateChat(String chatType) throws Exception {
+        links.linkAccount("123", CHANNEL, "456", token(user()));
+        command(30, chatType, "/check-link", 123, 456);
+        var reply = ArgumentCaptor.forClass(OutgoingMessage.class);
+        verify(sender).send(reply.capture());
+        assertThat(reply.getValue().text()).isEqualTo("Este comando solo está disponible en una conversación privada");
+        assertThat(count("channel_accounts")).isEqualTo(1);
     }
 
     @Test

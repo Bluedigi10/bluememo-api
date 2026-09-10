@@ -14,6 +14,8 @@ This is scope context, not permission to implement future BMs early.
 | BM-03 | Telegram ↔ BlueMemo user linking | 🟠 Active |
 | BM-04–BM-22 | Later roadmap | ⚪ Pending |
 
+BM-03 progress (2026-09-10): core functionality is verified by local automated tests and user-reported real Telegram DEV/restart evidence. It remains active pending PR review resolution and CI for the final HEAD; this update does not close BM-03 or advance BM-04. See [PROJECT_STATE.md](PROJECT_STATE.md#bm-03--verification-evidence) for evidence and the commit-specific CI limitation.
+
 ## Delivery sequence
 
 | ID | Delivery | Expected outcome |

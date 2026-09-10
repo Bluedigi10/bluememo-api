@@ -4,6 +4,7 @@ BlueMemo is the backend for a personal conversational assistant. The current imp
 
 - **BM-01 — Telegram inbound and outbound messaging**
 - **BM-02 — Telegram reliability**
+- **BM-03 — Telegram identity linking (active, core functionality verified)**
 
 BM-01 receives Telegram updates through a protected webhook, converts supported messages into a channel-independent model, processes them, routes the response to the correct channel, and sends the reply through the Telegram Bot API.
 
@@ -25,11 +26,15 @@ All three endpoints require a BlueMemo JWT. Consent version `1` means consent to
 
 Open the returned deep link with the configured Telegram bot (`TELEGRAM_BOT_NAME`). Only a private-chat `/start <token>` can complete linking. The random 256-bit token expires in 10 minutes; only its SHA-256 hash is stored. An attempted link that reaches ownership checks consumes the token even if ownership conflicts prevent creation. External user and conversation are separate identifiers.
 
+Send `/check-link` in the bot's private chat to check whether that Telegram user and conversation currently resolve to an active BlueMemo association. The command reports linked/unlinked status without exposing the BlueMemo user ID. It rejects non-private chats; after revocation it reports unlinked.
+
 Revocation preserves history and immediately stops identity resolution. Linking again requires a new token and explicit consent. Full BlueMemo account deletion removes all its tokens and associations/history, along with todos, in one transaction.
 
 Flyway V5 adds consent/revocation fields and active-only unique indexes without changing V4. It invalidates unused legacy tokens and leaves historical consent null rather than inventing consent. Existing active links remain active. Duplicate pre-existing active conversations must be reviewed before migration; V5 does not silently reassign ownership.
 
-`ChannelLinkIntegrationTest` verifies this flow with PostgreSQL Testcontainers and MockMvc, including concurrency, owner isolation, revocation, hash-only storage and cleanup rollback. Real dev-bot E2E and CI for the final commit remain required before BM-03 closure. See `docs/codex/PROJECT_STATE.md` and `docs/codex/DECISIONS.md`.
+The latest local `clean verify` passed 123 tests, including the additional tests currently uncommitted. Coverage includes PostgreSQL/MockMvc linking, command conversion, revocation, concurrency, cleanup rollback, application-context recreation and V4-to-V5 migration with existing data.
+
+The user has also verified the real DEV bot flow: generate and consume a link token, inspect status, revoke, invalidate pending tokens, link again with preserved history, and restart the application without losing associations. The project context reports successful PR #10 CI (run #27) for `0217b00`; this is not CI evidence for the final HEAD. BM-03 remains active pending PR review resolution and final-HEAD CI. See [verification evidence](docs/codex/PROJECT_STATE.md#bm-03--verification-evidence) and [approved decisions](docs/codex/DECISIONS.md).
 
 ### Core API
 
