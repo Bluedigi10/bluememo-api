@@ -112,6 +112,7 @@ Do not move link-conflict checks before token consumption if that would make the
 
 - Deleting a BlueMemo account permanently deletes its associated todos, link tokens, channel links and linking/revocation history.
 - Dependent records are removed explicitly before deleting the user, inside the same transaction. Failure must roll back the deletion.
+- Keep foreign keys as database integrity protection; explicit application-level cleanup does not replace relational integrity constraints.
 - Unlinking affects only the selected channel's active association. Preserve the BlueMemo account, other channels and linking/revocation history.
 - A revoked association must stop resolving identity immediately.
 - Pending tokens for an unlinked channel must not bypass the fresh-link requirement.
