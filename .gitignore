@@ -39,3 +39,8 @@ build/
 
 # Local agent configuration
 .agents/
+
+# Local Codex operational context
+docs/codex/PROJECT_STATE.md
+docs/codex/ACTIVE_DELIVERY.md
+docs/codex/ACTIVE_BM*.md
