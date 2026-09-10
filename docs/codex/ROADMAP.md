@@ -1,26 +1,26 @@
-# BlueMemo — Roadmap Context
+# BlueMemo — Roadmap
 
-Based on the latest approved roadmap available for this project: **Roadmap v1.3 — Telegram Identity (2026-09-01)**.
+Based on the latest approved roadmap for the project. This file records delivery order and stable status; it is not a live PR/branch/CI snapshot.
 
-This is scope context, not permission to implement future BMs early.
-
-## Current status
+## Status
 
 | ID | Delivery | Status |
 | --- | --- | --- |
 | BM-00 | Audit existing `bluememo-api` base | ✅ Closed |
-| BM-01 | Telegram inbound/outbound functional | ✅ Closed — PR #8 |
-| BM-02 | Telegram operational reliability | ✅ Closed — PR #9 / `ea61c45` |
-| BM-03 | Telegram ↔ BlueMemo user linking | 🟠 Active — implemented/verified, PR #10 merge pending |
-| BM-04–BM-22 | Later roadmap | ⚪ Pending |
+| BM-01 | Telegram inbound/outbound functional | ✅ Closed |
+| BM-02 | Telegram operational reliability | ✅ Closed |
+| BM-03 | Telegram ↔ BlueMemo user linking | ✅ Closed |
+| BM-04 | Tools architecture + execution context | ⏭️ Next |
+| BM-05–BM-22 | Later roadmap | ⚪ Pending |
 
-BM-03 progress (2026-09-10): implementation, automated verification, real Telegram DEV E2E, revocation/relink, pending-token invalidation, migration fixtures and application-restart persistence have been verified. GitHub Actions CI run #30 succeeded for functional anchor `745a980a`. PR #10 remains open; before closure, confirm the current PR HEAD still has green CI and no blocking review findings, then merge. BM-04 must not start before BM-03 is closed.
+BM-03 is closed after implementation, automated verification, real Telegram DEV E2E, revocation/relinking, migration/restart validation, review resolution, PR #10 merge and successful CI on `main`.
+
+BM-04 is the next planned delivery but should not be treated as started until the user explicitly begins it.
 
 ## Delivery sequence
 
 | ID | Delivery | Expected outcome |
 | --- | --- | --- |
-| BM-03 | Telegram ↔ BlueMemo user linking | Verifiable/revocable Telegram identity linked to BlueMemo user. |
 | BM-04 | Tools architecture + execution context | Trusted identity, authorization, idempotency key, normalized tool errors. Closes Gate B. |
 | BM-05 | Google OAuth | Encrypted tokens, minimum scopes, refresh/revocation tied to BlueMemo user. |
 | BM-06 | Google Calendar read | Read calendars/events with pagination/time zones. |
@@ -30,10 +30,10 @@ BM-03 progress (2026-09-10): implementation, automated verification, real Telegr
 | BM-10 | Deterministic intents/commands | Known commands work without unnecessary LLM dependency. |
 | BM-11 | LLM Gateway | Provider abstraction, timeouts, token/budget limits, safe fallbacks. |
 | BM-12 | Conversational context | User/channel isolation, TTL, no secrets. |
-| BM-13 | Hybrid router | Deterministic commands vs LLM vs Tools without letting model impersonate identity/authorization. |
+| BM-13 | Hybrid router | Deterministic commands vs LLM vs Tools without letting the model impersonate identity/authorization. |
 | BM-14 | Spotify OAuth | Minimum scopes, refresh, revocation. |
 | BM-15 | Spotify read | Playback/library/search reads. |
-| BM-16 | Spotify control | Authorized actions against valid device. |
+| BM-16 | Spotify control | Authorized actions against a valid device. |
 | BM-17 | WhatsApp inbound | Add authenticated WhatsApp adapter on proven channel/core abstractions. |
 | BM-18 | WhatsApp outbound/routing | Reply through WhatsApp without rewriting central conversation logic. |
 | BM-19 | Cross-cutting Tools security | Permission/ownership/AI arguments/session/token audit. |
@@ -49,8 +49,11 @@ Closed by BM-01.
 ### Gate A.1 — Telegram robust delivery
 Closed by BM-02.
 
+### Telegram identity foundation
+Completed by BM-03. Telegram can now resolve to a verified/revocable BlueMemo identity, but this does not authorize personal Tool actions.
+
 ### Gate B — Authorized personal actions
-Not closed by BM-03. BM-03 establishes trusted linking/resolution; BM-04 must establish authorization/execution context before personal Tool writes.
+Not closed. BM-04 must establish authorization/execution context before personal Tool writes.
 
 ### Gate C — Integration/synchronization
 Must be closed by BM-09.
@@ -60,9 +63,9 @@ Validated across BM-19 through BM-22.
 
 ## Planning policy
 
-- Closed BMs stay closed; regressions become defects unless explicitly re-opened.
+- Closed BMs stay closed; regressions become defects unless explicitly reopened.
 - A new finding belongs in the functional delivery that requires it.
-- Do not pull future architecture into the active BM "because it will be needed later".
-- BM-03 must be completed before BM-04.
+- Do not pull future architecture into the current BM solely because it may be useful later.
 - Calendar/Tasks writes remain blocked until BM-04 closes Gate B.
 - The roadmap can be split into additional small deliveries when explicitly approved and when that improves verifiability.
+- Do not mark a delivery Active merely because it is next; activation requires explicit user intent to start it.

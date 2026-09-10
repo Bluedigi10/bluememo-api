@@ -1,12 +1,13 @@
 # BlueMemo API
 
-BlueMemo is the backend for a personal conversational assistant. The current implementation includes user identity/task management plus the first Telegram messaging deliveries:
+BlueMemo is the backend for a personal conversational assistant. The current implementation includes user/task management plus the first Telegram messaging and identity capabilities.
 
-- **BM-01 — Telegram inbound/outbound messaging** — closed
-- **BM-02 — Telegram operational reliability** — closed
-- **BM-03 — Telegram ↔ BlueMemo identity linking** — implemented and verified; PR #10 merge pending
+Completed deliveries:
+- **BM-01 — Telegram inbound/outbound messaging**
+- **BM-02 — Telegram operational reliability**
+- **BM-03 — Telegram ↔ BlueMemo identity linking**
 
-BM-03 links a Telegram identity to an existing JWT-authenticated BlueMemo user. It does **not** authorize Tools or personal provider actions; that belongs to BM-04.
+BM-03 links a Telegram identity to an existing JWT-authenticated BlueMemo user. It does **not** authorize Tools or provider actions; authorization/execution context belongs to the next roadmap stage.
 
 ## Tech stack
 
@@ -23,21 +24,21 @@ BM-03 links a Telegram identity to an existing JWT-authenticated BlueMemo user. 
 - Docker / Docker Compose
 - GitHub Actions CI
 
-## Core API
+## Current capabilities
 
-BlueMemo currently provides:
-
+BlueMemo provides:
 - user registration/login;
 - BCrypt password hashing;
 - stateless JWT authentication;
 - profile retrieval, update and deletion;
 - per-user Todo CRUD;
 - Telegram inbound/outbound messaging;
-- persistent Telegram inbound-event idempotency;
-- Unicode-safe Telegram message fragmentation;
-- Telegram ↔ BlueMemo identity linking, inspection, revocation and resolution.
+- persistent inbound-event idempotency;
+- Unicode-safe Telegram outbound fragmentation;
+- Telegram ↔ BlueMemo link generation, verification, inspection, revocation and relinking;
+- active Telegram identity resolution through channel + external user + conversation.
 
-## BM-03 — Telegram identity linking
+## Telegram identity linking
 
 ### REST endpoints
 
@@ -45,19 +46,18 @@ BlueMemo currently provides:
 | --- | --- | --- | --- |
 | `POST` | `/users/me/link/channel/TELEGRAM` | JWT | Requires `{"consent":true}` and returns `linkUrl` + `expirationDate` |
 | `GET` | `/users/me/link/channel/TELEGRAM` | JWT | Returns the authenticated user's link history, newest first |
-| `DELETE` | `/users/me/unlink/channel/TELEGRAM` | JWT | Revokes the active Telegram link, preserves history and invalidates pending tokens |
+| `DELETE` | `/users/me/unlink/channel/TELEGRAM` | JWT | Revokes the active Telegram link, preserves history and invalidates pending link tokens |
 
 A generated link token:
-
 - contains 256 random bits from `SecureRandom`;
 - expires after 10 minutes;
 - is one-time;
 - is persisted only as a SHA-256 hash;
-- stores explicit consent metadata (`consentedAt`, `consentVersion=1`).
+- stores consent metadata (`consentedAt`, `consentVersion=1`).
 
-Only a private Telegram chat can complete `/start <token>`. The association stores Telegram external user and conversation separately. A valid token is consumed before final ownership/conflict checks; if a conflict prevents creation, the token remains consumed by design.
+Only a private Telegram chat can complete `/start <token>`. Telegram external user and conversation are stored separately. A valid token is consumed before final ownership/conflict checks; if a conflict prevents creation, that token remains consumed by design.
 
-Revocation keeps the historical `channel_accounts` row and populates `revokedAt`. A revoked association stops resolving immediately. Relinking requires a fresh verified token and creates a new active history row.
+Revocation preserves the historical `channel_accounts` row and sets `revokedAt`. A revoked association stops resolving immediately. Relinking requires a fresh verified token and creates a new active history row.
 
 `ChannelIdentityResolver` resolves a BlueMemo user only when channel, external user and conversation match an active association.
 
@@ -69,25 +69,24 @@ Telegram-specific command syntax is interpreted inside the Telegram adapter and 
 | --- | --- | --- |
 | regular text | `MESSAGE` | Replies `Recibí <text>` |
 | `/start` | `WELCOME` | Replies `Bienvenido, soy un bot` |
-| `/start <token>` | `LINK_CHANNEL` | Attempts Telegram ↔ BlueMemo linking |
-| `/check-link` | `CHECK_CHANNEL_LINK` | Reports linked/unlinked state in private chat without exposing BlueMemo UUID |
+| `/start <token>` | `LINK_CHANNEL` | Attempts channel linking |
+| `/check-link` | `CHECK_CHANNEL_LINK` | Reports linked/unlinked state in private chat without exposing the BlueMemo UUID |
 | `/help` | `HELP` | Returns the current help response |
 | unknown slash command | `UNKNOWN_COMMAND` | Replies `Comando no reconocido` |
 
-`TelegramCommands` / `TelegramActionConverter` own Telegram command parsing. `ProcessIncomingMessageService` consumes `IncomingAction`; it does not parse Telegram command strings.
+`TelegramCommands` / `TelegramActionConverter` own Telegram command parsing. `ProcessIncomingMessageService` consumes generic `IncomingAction` values and does not parse Telegram command strings.
 
 ### Consent and audit
 
-Consent version `1` means consent to associate the Telegram identity/conversation with the BlueMemo account for identity resolution. It is not permission to execute Tools. Clients must explicitly request consent before sending `consent:true`.
+Consent version `1` means consent to associate the Telegram identity/conversation with the BlueMemo account for identity resolution. It is not permission to execute Tools.
 
 Audit/history fields include:
-
 - `linkedAt`;
 - `revokedAt`;
 - `consentedAt`;
 - `consentVersion`.
 
-Deleting the BlueMemo user is a separate use case from unlinking: account deletion removes all channel associations/history, all link tokens, todos and finally the user within one transaction.
+Deleting a BlueMemo account is distinct from unlinking a channel: full account deletion removes channel associations/history, link tokens, todos and finally the user in one transaction.
 
 ## Telegram messaging architecture
 
@@ -106,23 +105,19 @@ flowchart TD
     Client --> Telegram
 ```
 
-Responsibilities:
-
 | Component | Responsibility |
 | --- | --- |
 | `TelegramWebhookController` | Validates the Telegram webhook secret and acknowledges requests |
 | `TelegramUpdateProcess` | Rejects unsupported updates, registers events and prevents duplicate processing |
 | `TelegramUpdateMapper` | Maps Telegram DTOs into channel-independent messages/events |
 | `TelegramActionConverter` | Converts Telegram command syntax into generic `IncomingAction` |
-| `ProcessIncomingMessageService` | Executes generic action behavior and manages processing status |
-| `SendMessageRouter` | Selects a channel sender by `ChannelType` |
-| `TelegramMessageSender` | Splits/validates ordered Telegram outbound fragments |
-| `TelegramMessageSplitter` | Enforces Telegram's 4096-code-point message limit safely |
+| `ProcessIncomingMessageService` | Executes generic action behavior and manages event status |
+| `SendMessageRouter` | Selects a sender by `ChannelType` |
+| `TelegramMessageSender` | Splits and sends ordered Telegram responses |
+| `TelegramMessageSplitter` | Enforces Telegram's 4096-code-point limit safely |
 | `TelegramApiClient` | Calls Telegram Bot API through `RestClient` |
 
 ## Telegram webhook
-
-### Endpoint
 
 ```http
 POST /webhooks/telegram
@@ -133,7 +128,6 @@ Content-Type: application/json
 The route is public in Spring Security but authenticates Telegram through the secret header; it does not require a BlueMemo JWT.
 
 A supported update requires:
-
 - `update_id`;
 - `message.message_id`;
 - `message.date`;
@@ -150,7 +144,7 @@ Supported Telegram updates are registered in PostgreSQL before processing. The i
 (channel_type, external_event_id)
 ```
 
-For Telegram, `external_event_id` is the Telegram `update_id`. Inserts use PostgreSQL `ON CONFLICT DO NOTHING`; duplicate updates are acknowledged but not processed/sent again.
+For Telegram, `external_event_id` is `update_id`. Inserts use PostgreSQL `ON CONFLICT DO NOTHING`, so duplicate updates are acknowledged but not processed or answered twice.
 
 Normal lifecycle:
 
@@ -158,28 +152,24 @@ Normal lifecycle:
 RECEIVED → PROCESSING → PROCESSED → ANSWERED
 ```
 
-`FAILED` represents a runtime failure during reply generation/processing or outbound delivery. `ProcessIncomingMessageService` wraps reply generation and sending in the failure lifecycle so failures do not remain incorrectly stuck in `PROCESSING` merely because they occurred before the outbound call.
+`FAILED` represents a runtime failure during reply generation/processing or outbound delivery. If writing `FAILED` also fails, the original processing exception remains the primary cause and the status-write failure is retained as a suppressed exception.
 
-Idempotency is persistent across application restarts and shared instances using the same database, but it is not a distributed exactly-once guarantee across PostgreSQL and Telegram.
+The idempotency record survives application restarts and works across instances sharing the same PostgreSQL database. It is not a distributed exactly-once guarantee across PostgreSQL and Telegram.
 
-### Incoming-event retention
-
-The defined retention policy is 30 days from `received_at`. Automatic scheduled cleanup is not currently implemented; deletion is operational when required. Deleting an idempotency row also removes the duplicate-detection history for that update.
+The defined retention policy for `incoming_events` is 30 days from `received_at`. Automatic scheduled cleanup is not yet implemented.
 
 ## Telegram outbound fragmentation
 
 Telegram text is limited to 4096 Unicode code points per message. This constraint remains inside the Telegram adapter.
 
 The splitter:
-
 - uses Unicode code-point-aware operations (`codePointCount`, `offsetByCodePoints`);
-- does not split UTF-16 surrogate pairs such as emoji;
+- does not split UTF-16 surrogate pairs;
 - prefers nearby line-break/space boundaries within 50 code points of the limit;
 - otherwise performs a hard split at 4096 code points;
-- preserves complete original content;
-- preserves fragment order and the same `chat_id`;
-- stops after the first failed fragment;
-- leaves the incoming event `FAILED` on outbound failure.
+- preserves complete original content and fragment order;
+- uses the same `chat_id` for all fragments;
+- stops after the first failed fragment.
 
 Previously accepted fragments cannot be rolled back and individual fragments are not automatically retried.
 
@@ -187,14 +177,13 @@ Previously accepted fragments cannot be rolled back and individual fragments are
 
 Flyway applies pending migrations before Hibernate schema validation.
 
-BM-03 persistence uses:
-
+Relevant messaging/linking migrations:
 - **V4** — creates channel-link token/account tables;
 - **V5** — adds consent/revocation fields, active-only unique indexes and invalidates unused pre-consent tokens.
 
-V4 was not rewritten after V5 was introduced. Existing associations are preserved without fabricating historical consent. Pre-existing ambiguous active conversations cause V5 to fail rather than silently reassign/delete ownership.
+V4 was not rewritten after V5 was introduced. Existing associations are preserved without fabricating historical consent. Ambiguous pre-existing active conversations cause V5 to fail instead of silently reassigning/deleting ownership.
 
-Do not edit already shared/applied migrations; add a new migration instead.
+Do not edit already shared/applied migrations; add a new migration.
 
 ## Environment variables
 
@@ -252,7 +241,6 @@ docker compose up --build -d
 ```
 
 Docker exposes:
-
 - API: `http://localhost:8000`
 - Swagger UI: `http://localhost:8000/swagger-ui.html`
 - OpenAPI JSON: `http://localhost:8000/v3/api-docs`
@@ -360,7 +348,7 @@ Canonical Todo statuses are `PENDING`, `IN_PROGRESS`, and `DONE`; `COMPLETED` is
 
 ## Testing
 
-Run from `bluememo/`. Docker must be running because persistence integration tests use PostgreSQL Testcontainers.
+Run from `bluememo/`. Docker must be running because persistence/integration tests use PostgreSQL Testcontainers.
 
 Windows:
 
@@ -374,15 +362,15 @@ Linux/macOS:
 ./mvnw clean verify
 ```
 
-The latest recorded local BM-03 verification passed **123 tests with 0 failures, 0 errors and 0 skipped**. Coverage includes Telegram command conversion, identity linking/revocation, concurrency, migration V4→V5 and application-context recreation against persistent PostgreSQL state.
+BM-03 includes automated coverage for link generation/consumption, consent, revocation/relinking, command conversion, concurrency, account cleanup, application-context recreation and V4→V5 migration behavior. The real development Telegram bot flow was also validated end-to-end, including revocation, pending-token invalidation, relinking and persistence after application restart.
 
-GitHub Actions uses:
+GitHub Actions runs:
 
 ```bash
 ./mvnw --batch-mode --no-transfer-progress clean verify
 ```
 
-for PRs targeting `main`, pushes to `main` and manual runs. CI run #30 completed successfully for functional verification anchor `745a980a`; after any later documentation-only commit, check the PR's current HEAD before claiming final CI status.
+for pull requests targeting `main`, pushes to `main` and manual runs.
 
 The JaCoCo report is generated at:
 
@@ -390,25 +378,11 @@ The JaCoCo report is generated at:
 bluememo/target/site/jacoco/index.html
 ```
 
-## BM-03 verification evidence
+## Project documentation
 
-In addition to automated tests, the real development Telegram bot (`@BlueMemoAppDevBot`) was manually exercised against the local API/PostgreSQL database. Verified behavior includes:
+- `README.md` — implemented behavior, setup and public project documentation.
+- `AGENTS.md` — stable instructions for Codex/agent work.
+- `docs/codex/DECISIONS.md` — approved architectural/product invariants.
+- `docs/codex/ROADMAP.md` — delivery sequence, gates and stable BM status.
 
-- `/check-link` reports unlinked before association;
-- generation and consumption of a real deep-link token;
-- successful `/start <token>` linking;
-- persisted hash-only token and consent metadata;
-- active identity resolution;
-- history inspection;
-- unlink with `204` and preserved `revokedAt` history;
-- immediate unlinked status after revocation;
-- invalidation of a pending unused token;
-- fresh relinking with a new token and preserved old history;
-- persistence of active/revoked state after application restart;
-- Flyway schema version 5 validated as up to date after restart.
-
-See `docs/codex/PROJECT_STATE.md`, `docs/codex/ACTIVE_BM03.md`, `docs/codex/DECISIONS.md` and `docs/codex/ROADMAP.md` for the maintained project context.
-
-## Delivery status
-
-BM-03 is functionally implemented and verified. PR #10 remains the closure boundary. Before merge, confirm the **current PR HEAD** has green CI and no blocking review findings. After merge, BM-03 can be marked closed and BM-04 becomes the active delivery.
+Volatile operational snapshots (current HEAD, open PR state, current CI run, uncommitted work and active-delivery scratch notes) are intentionally not versioned. Inspect Git/GitHub directly for current repository state.
