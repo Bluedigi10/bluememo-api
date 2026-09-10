@@ -10,6 +10,7 @@ import java.util.Base64;
 import java.util.Optional;
 import java.util.UUID;
 
+import com.bluedigi.bluememo.identity.application.port.ChannelIdentityResolver;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -36,6 +37,7 @@ public class ChannelAccountService {
     private final ChannelLinkTokenRepository channelLinkTokenRepository;
     private final ChannelAccountRepository channelAccountRepository;
     private final ChannelAccountMapper channelAccountMapper;
+    private final ChannelIdentityResolver channelIdentityResolver;
     private final LinkProperties linkProperties;
 
     @Transactional(readOnly = true)
@@ -49,6 +51,11 @@ public class ChannelAccountService {
         requireUserLock(userUUID);
         channelLinkTokenRepository.invalidate(userUUID, channelType);
         channelAccountRepository.revoke(userUUID, channelType);
+    }
+
+    @Transactional(readOnly = true)
+    public boolean isLinked(ChannelType channelType, String externalUserId, String externalConversationId) {
+        return channelIdentityResolver.resolve(channelType, externalUserId, externalConversationId).isPresent();
     }
 
     @Transactional

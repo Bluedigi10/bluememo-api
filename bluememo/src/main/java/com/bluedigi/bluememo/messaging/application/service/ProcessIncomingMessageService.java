@@ -73,6 +73,7 @@ public class ProcessIncomingMessageService implements ProcessIncomingMessageUseC
 
         return switch (MessageCommands.fromValue(command)) {
             case START -> processStart(message, token);
+            case CHECK_LINK -> checkLink(message);
             case HELP -> "Estos son los comandos disponibles...";
             default -> "Comando no reconocido";
         };
@@ -90,6 +91,21 @@ public class ProcessIncomingMessageService implements ProcessIncomingMessageUseC
         String externalUserId = message.senderId();
         String externalChatId = message.conversationId();
         return channelAccountService.linkAccount(externalUserId, message.channelType(), externalChatId, token);
+    }
+
+    private String checkLink(IncomingMessage message) {
+        if (!message.privateConversation()) {
+            return "Este comando solo está disponible en una conversación privada";
+        }
+
+        boolean linked = channelAccountService.isLinked(
+                message.channelType(),
+                message.senderId(),
+                message.conversationId());
+
+        return linked
+                ? "Tu cuenta de Telegram está vinculada a BlueMemo."
+                : "Tu cuenta de Telegram no está vinculada a BlueMemo.";
     }
 
     private String[] extractCommandFromMessage(String text) {

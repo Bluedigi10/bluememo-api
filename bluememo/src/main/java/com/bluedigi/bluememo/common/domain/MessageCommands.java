@@ -2,6 +2,7 @@ package com.bluedigi.bluememo.common.domain;
 
 public enum MessageCommands {
     START("/start"),
+    CHECK_LINK("/check-link"),
     HELP("/help"),
     UNKNOWN("unknown");
 
@@ -23,6 +24,4 @@ public enum MessageCommands {
         }
         return UNKNOWN;
     }
-
-
 }
