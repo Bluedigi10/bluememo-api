@@ -527,7 +527,7 @@ export SPRING_DATASOURCE_PASSWORD=replace_with_a_strong_password
 export JWT_SECRET=replace_with_a_base64_encoded_secret
 export TELEGRAM_BOT_TOKEN=replace_with_the_development_bot_token
 export TELEGRAM_WEBHOOK_SECRET=replace_with_the_webhook_secret
-export TELEGRAM_BOT_NAME= BlueMemoAppDevBot
+export TELEGRAM_BOT_NAME=BlueMemoAppDevBot
 
 ./mvnw spring-boot:run -Dspring-boot.run.profiles=local
 ```
