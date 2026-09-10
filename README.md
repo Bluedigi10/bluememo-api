@@ -426,6 +426,7 @@ The Maven Wrapper is included, so a separate Maven installation is not required.
 | `JWT_EXPIRATION_MS` | No | `900000` | JWT lifetime in milliseconds |
 | `TELEGRAM_BOT_TOKEN` | Yes | None | Token issued by BotFather |
 | `TELEGRAM_WEBHOOK_SECRET` | Yes | None | Secret expected in the Telegram webhook header |
+| `TELEGRAM_BOT_NAME` | Yes | None | Telegram bot username used to generate deep links, e.g. `BlueMemoAppDevBot` |
 | `SERVER_PORT` | No | `8080` | Internal application port |
 | `SPRING_DATASOURCE_URL` | QA/Prod | Local PostgreSQL URL | JDBC datasource URL |
 | `SPRING_DATASOURCE_USERNAME` | QA/Prod | `app_user` locally | Database username |
@@ -456,6 +457,7 @@ POSTGRES_PASSWORD=replace_with_a_strong_password
 JWT_SECRET=replace_with_a_base64_encoded_secret
 TELEGRAM_BOT_TOKEN=replace_with_the_development_bot_token
 TELEGRAM_WEBHOOK_SECRET=replace_with_the_webhook_secret
+TELEGRAM_BOT_NAME=BlueMemoAppDevBot
 ```
 
 The `.env` file is ignored by Git.
@@ -509,6 +511,7 @@ $env:SPRING_DATASOURCE_PASSWORD = "replace_with_a_strong_password"
 $env:JWT_SECRET = "replace_with_a_base64_encoded_secret"
 $env:TELEGRAM_BOT_TOKEN = "replace_with_the_development_bot_token"
 $env:TELEGRAM_WEBHOOK_SECRET = "replace_with_the_webhook_secret"
+$env:TELEGRAM_BOT_NAME= "BlueMemoAppDevBot"
 
 .\mvnw.cmd spring-boot:run "-Dspring-boot.run.profiles=local"
 ```
@@ -524,6 +527,7 @@ export SPRING_DATASOURCE_PASSWORD=replace_with_a_strong_password
 export JWT_SECRET=replace_with_a_base64_encoded_secret
 export TELEGRAM_BOT_TOKEN=replace_with_the_development_bot_token
 export TELEGRAM_WEBHOOK_SECRET=replace_with_the_webhook_secret
+export TELEGRAM_BOT_NAME= BlueMemoAppDevBot
 
 ./mvnw spring-boot:run -Dspring-boot.run.profiles=local
 ```

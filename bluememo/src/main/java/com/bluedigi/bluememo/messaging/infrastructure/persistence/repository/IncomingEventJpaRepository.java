@@ -9,7 +9,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import com.bluedigi.bluememo.common.domain.ChannelType;
-import com.bluedigi.bluememo.messaging.domain.IncomingEventStatus;
+import com.bluedigi.bluememo.messaging.domain.enums.IncomingEventStatus;
 import com.bluedigi.bluememo.messaging.infrastructure.persistence.entity.IncomingEventEntity;
 
 public interface IncomingEventJpaRepository extends JpaRepository<IncomingEventEntity, UUID> {

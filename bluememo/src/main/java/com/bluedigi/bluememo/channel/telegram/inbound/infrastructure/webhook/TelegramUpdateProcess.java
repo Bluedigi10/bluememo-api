@@ -5,7 +5,7 @@ import com.bluedigi.bluememo.channel.telegram.inbound.infrastructure.webhook.req
 import com.bluedigi.bluememo.messaging.application.port.in.ProcessIncomingMessageUseCase;
 import com.bluedigi.bluememo.messaging.application.port.out.IncomingEventRepository;
 import com.bluedigi.bluememo.messaging.domain.IncomingEvent;
-import com.bluedigi.bluememo.messaging.domain.IncomingEventStatus;
+import com.bluedigi.bluememo.messaging.domain.enums.IncomingEventStatus;
 import com.bluedigi.bluememo.messaging.domain.IncomingMessage;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;

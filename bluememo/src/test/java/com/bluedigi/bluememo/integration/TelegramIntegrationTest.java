@@ -1,7 +1,7 @@
 package com.bluedigi.bluememo.integration;
 
 import com.bluedigi.bluememo.channel.telegram.outbound.infrastructure.api.dto.TelegramHeader;
-import com.bluedigi.bluememo.messaging.domain.IncomingEventStatus;
+import com.bluedigi.bluememo.messaging.domain.enums.IncomingEventStatus;
 import com.bluedigi.bluememo.messaging.domain.MessageConstants;
 import com.bluedigi.bluememo.messaging.infrastructure.persistence.entity.IncomingEventEntity;
 import com.bluedigi.bluememo.messaging.infrastructure.persistence.repository.IncomingEventJpaRepository;

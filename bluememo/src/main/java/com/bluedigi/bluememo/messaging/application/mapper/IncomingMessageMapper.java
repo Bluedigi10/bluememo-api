@@ -5,7 +5,7 @@ import java.time.Instant;
 import org.springframework.stereotype.Component;
 
 import com.bluedigi.bluememo.messaging.domain.IncomingEvent;
-import com.bluedigi.bluememo.messaging.domain.IncomingEventStatus;
+import com.bluedigi.bluememo.messaging.domain.enums.IncomingEventStatus;
 import com.bluedigi.bluememo.messaging.domain.IncomingMessage;
 
 @Component

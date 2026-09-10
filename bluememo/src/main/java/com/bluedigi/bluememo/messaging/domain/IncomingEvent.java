@@ -5,6 +5,7 @@ import java.util.UUID;
 
 import com.bluedigi.bluememo.common.domain.ChannelType;
 
+import com.bluedigi.bluememo.messaging.domain.enums.IncomingEventStatus;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
 import lombok.Builder;

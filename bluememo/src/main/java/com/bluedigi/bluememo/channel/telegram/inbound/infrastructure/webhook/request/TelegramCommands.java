@@ -1,6 +1,6 @@
-package com.bluedigi.bluememo.common.domain;
+package com.bluedigi.bluememo.channel.telegram.inbound.infrastructure.webhook.request;
 
-public enum MessageCommands {
+public enum TelegramCommands {
     START("/start"),
     CHECK_LINK("/check-link"),
     HELP("/help"),
@@ -8,7 +8,7 @@ public enum MessageCommands {
 
     private final String value;
 
-    MessageCommands(String string) {
+    TelegramCommands(String string) {
         this.value = string;
     }
 
@@ -16,8 +16,8 @@ public enum MessageCommands {
         return this.value;
     }
 
-    public static MessageCommands fromValue(String text) {
-        for (MessageCommands command : MessageCommands.values()) {
+    public static TelegramCommands fromValue(String text) {
+        for (TelegramCommands command : TelegramCommands.values()) {
             if (command.getValue().equals(text) && command != UNKNOWN) {
                 return command;
             }
