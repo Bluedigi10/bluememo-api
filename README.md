@@ -80,6 +80,8 @@ Telegram-specific command syntax is interpreted inside the Telegram adapter and 
 
 Consent version `1` means consent to associate the Telegram identity/conversation with the BlueMemo account for identity resolution. It is not permission to execute Tools.
 
+Clients must explicitly obtain the user's consent before sending `consent:true`. The API flag must represent an actual user choice and must not be asserted automatically.
+
 Audit/history fields include:
 - `linkedAt`;
 - `revokedAt`;
