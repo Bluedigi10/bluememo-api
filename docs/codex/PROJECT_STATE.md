@@ -1,207 +1,134 @@
 # BlueMemo — Current Project State
 
-## Verified Git baseline — 2026-09-10
+## Current delivery
 
-- Branch: `feat/BM-03-telegram-user-linking`.
-- Verified base commit: `657fb6093e0fd89f716348b30b9d6de55b61e737` (`minor change`). Additional tests were validated in the working tree before commit; subsequent documentation updates were checked with `git diff --check`. This identifies the reviewed baseline, not necessarily the latest HEAD after future commits.
-- Commit time: 2026-09-10 06:50:09 UTC / 00:50:09 America/Mexico_City.
-- Local main: `ea61c45a1fa0cda23bb840dedb49d4e5f687f790`; HEAD is 21 ahead, 0 behind.
-- The initial HEAD validation began with a clean tree. The current working tree includes 20 additional test cases and documentation updates, still uncommitted.
-- No remote fetch or CI query was performed in this documentation update. The user reports successful PR #10 CI for 0217b00; this does not establish CI success for current HEAD 657fb60 or the uncommitted tests.
-- The previous implementation was committed in `9617118`; current implementation below is present in HEAD. The local origin tracking reference also points to HEAD; no fetch was performed.
+- Active delivery: **BM-03 — Telegram ↔ BlueMemo user linking**.
+- Pull request: **#10 — `feat/bm 03 telegram user linking`**.
+- PR branch: `feat/BM-03-telegram-user-linking` → `main`.
+- `main` baseline for BM-03: `ea61c45a1fa0cda23bb840dedb49d4e5f687f790` (BM-02 merged via PR #9).
+- BM-00, BM-01 and BM-02 remain closed.
+- BM-04+ concerns remain out of scope until BM-03 is merged/closed.
 
-## Closed deliveries and architecture
+### Functional verification anchor
 
-BM-00, BM-01 (PR #8) and BM-02 (PR #9) remain closed. Existing behavior includes protected Telegram webhook, generic message routing, own RestClient Bot API wrapper, PostgreSQL event idempotency, status lifecycle, and ordered Unicode-safe outbound splitting in the Telegram adapter.
+The latest code/test commit independently reviewed before this documentation refresh is:
 
-Java 17, Spring Boot 4.1.0, Maven Wrapper, PostgreSQL/JPA, Flyway, MockMvc/MockWebServer, PostgreSQL Testcontainers and GitHub Actions remain the foundation. BM-03 is identity linking only; BM-04 authorization and later integrations remain out of scope.
+`745a980a02b3fd86b593f80722af3a1a53a0b12f` — `added test and updated documentation`.
 
-## Changes already committed since the old snapshot
+At that commit:
 
-`3bef44e` changed expiry to 10 minutes, removed the /start token argument from command logging, made missing-token lookup return Optional/normal reply, added explicit account-deletion cleanup, and added a physical unlink endpoint. `930500e` recorded deletion/unlinking decisions.
+- the branch compared **22 commits ahead and 0 behind** `ea61c45`;
+- PR #10 was open, mergeable and not a draft;
+- GitHub Actions **CI run #30 (`34449297227`) completed successfully** for exactly `745a980`;
+- the CI `Build and test` job ran `./mvnw --batch-mode --no-transfer-progress clean verify` and succeeded.
 
-The old 6932118 snapshot, 15-minute discrepancy, missing-token exception finding and missing unlink-endpoint statement are obsolete. The committed physical unlink did not preserve history or invalidate pending tokens, and UserServiceTest still used the old constructor.
+Do **not** treat a HEAD SHA stored in a versioned documentation file as the live branch tip. Updating documentation creates a newer commit by definition. For the current PR HEAD, commit count, review state and CI, query Git/GitHub directly. The SHA above is a **functional verification anchor**, not a self-updating HEAD pointer.
 
 ## Current BM-03 implementation
 
-- `POST /users/me/link/channel/{channelType}` requires JWT ownership and JSON `{"consent":true}`. The user approved keeping this route rather than the historical challenges route.
-- Generation rejects an active user/channel link with 409, generates 256 random bits, stores SHA-256 only and returns the deep link plus `expirationDate` (10 minutes).
-- Consent version `1` and `consentedAt` are recorded with the token and copied to the verified association. Consent covers channel identity linking, not Tools authorization.
-- `/start <token>` accepts linking only in a private conversation. Telegram chat.type is interpreted in its adapter and represented by a channel-independent privateConversation boolean.
-- Missing/expired/replaced/used tokens receive normal invalid-token replies. The Telegram adapter now converts commands into IncomingAction values; generic processing logs only these normalized actions.
-- Token consumption remains a conditional SQL update before ownership checks. Account insertion uses `ON CONFLICT DO NOTHING` so ownership races produce controlled replies and commit consumption rather than rolling it back.
-- A PostgreSQL user-row lock coordinates generation, linking, unlinking and account deletion for each BlueMemo user. External ownership/conversation uniqueness remains database-enforced across users.
-- `DELETE /users/me/unlink/channel/{channelType}` revokes active associations and invalidates outstanding channel tokens, preserving the user, other channels and history. Re-linking requires a fresh verified token.
-- `GET /users/me/link/channel/{channelType}` returns only the authenticated user's association history; revokedAt distinguishes revoked from active entries.
-- `ChannelIdentityResolver` resolves an Optional BlueMemo UUID only when channel, external user and conversation all match an active association.
-- Account deletion explicitly deletes all associations/history and all tokens, then todos and user in one transaction.
+- `POST /users/me/link/channel/{channelType}` requires the authenticated BlueMemo user and explicit `{"consent":true}`.
+- Telegram link tokens use 256 bits from `SecureRandom`, expire after 10 minutes, are one-time, and only their SHA-256 hash is persisted.
+- Consent version `1` and `consentedAt` are stored with the token and copied to the verified channel association.
+- Telegram deep-link completion is private-chat-only.
+- Telegram-specific command syntax is interpreted inside the Telegram adapter by `TelegramActionConverter` / `TelegramCommands` and converted to the channel-independent `IncomingAction` model before reaching shared message processing.
+- `/start` maps to `WELCOME`; `/start <token>` maps to `LINK_CHANNEL`; `/check-link` maps to `CHECK_CHANNEL_LINK`; `/help` maps to `HELP`; unknown slash commands map to `UNKNOWN_COMMAND`; normal text maps to `MESSAGE`.
+- `ProcessIncomingMessageService` operates on `IncomingAction`, not Telegram command strings.
+- Reply-generation failures and outbound failures are both inside the processing failure lifecycle; runtime failures attempt to move the incoming event to `FAILED` before propagating `MessageException`.
+- Link-token consumption remains atomic and occurs before ownership/conflict checks. A token that reaches a conflicting link attempt remains consumed by design.
+- Account insertion uses `ON CONFLICT DO NOTHING` to produce controlled ownership/conversation conflict responses without rolling back consumed-token semantics.
+- A PostgreSQL user-row lock coordinates link generation, linking, unlinking and account deletion for the same BlueMemo user.
+- Active ownership is constrained in PostgreSQL for BlueMemo user, external user and conversation.
+- `ChannelIdentityResolver` resolves a BlueMemo UUID only when channel + external user + conversation match an active association.
+- `/check-link` is private-chat-only and reports linked/unlinked state without exposing the BlueMemo UUID.
+- `GET /users/me/link/channel/{channelType}` returns only the authenticated user's association history ordered by `linkedAt` descending.
+- `DELETE /users/me/unlink/channel/{channelType}` revokes the selected active association, preserves history and invalidates outstanding tokens for that user/channel.
+- Relinking requires a fresh verified token and creates a new active history row while the revoked row remains preserved.
+- Full BlueMemo account deletion explicitly removes channel associations/history, link tokens and todos before deleting the user, in one transaction.
 
-## Persistence and migration
+## Persistence and migrations
 
-V4 is unchanged. V5 adds revoked_at and consent fields, replaces unconditional account ownership constraints with active-only unique indexes for user, external user and conversation, and invalidates unused pre-consent tokens.
+- V4 creates `channel_link_tokens` and `channel_accounts`.
+- V4 remains unchanged after V5 was introduced.
+- V5 adds `revoked_at`, `consented_at` and `consent_version` fields.
+- V5 replaces unconditional channel-account uniqueness with active-only unique indexes.
+- V5 invalidates unused pre-consent link tokens instead of inventing consent for them.
+- Existing associations keep null consent fields when no historical consent exists.
+- Conflicting pre-existing active conversations cause migration failure rather than silent deletion or reassignment.
+- Revoked associations retain link/revocation/consent history.
 
-Existing associations retain null consent fields: migration does not fabricate historical consent. Existing active associations remain active. If existing data has duplicate active conversations, V5 fails rather than silently deleting or reassigning ownership; inspect actual deployed data before applying it.
+## Automated verification
 
-Revoked associations retain linkedAt, revokedAt, consentedAt and consentVersion. Token upsert still replaces the previous token for a user/channel; it is not an issuance-history ledger.
+The latest recorded local full verification for the committed BM-03 test set is:
 
-## Verification and remaining work
+- `123 tests`;
+- `0 failures`;
+- `0 errors`;
+- `0 skipped`;
+- PostgreSQL Testcontainers;
+- `clean verify` successful.
 
-Dedicated ChannelLinkIntegrationTest covers consent/authentication, hash-only storage/expiry, invalid and replaced tokens, private-chat webhook/deduplication, safe logging, resolution consistency, owner isolation, revocation/fresh linking, same-token and external-ownership races, conversation conflicts, account cleanup and rollback on cleanup failure.
+Coverage includes:
 
-UserServiceTest covers cleanup dependencies and ordering. The latest local full run passed 123 tests. The user has now recorded real DEV bot E2E and application-restart evidence below. BM-03 core functionality is verified; formal closure remains pending PR review resolution and CI for the final HEAD.
+- authenticated link generation and explicit consent;
+- entropy, hash-only persistence and 10-minute expiry;
+- invalid, expired, already-used and replaced tokens;
+- private-chat-only linking;
+- Telegram command-to-`IncomingAction` conversion;
+- `/check-link` before linking, while linked, after revocation and after fresh relinking;
+- sender/conversation consistency and no identity/token exposure;
+- webhook idempotency;
+- ownership isolation;
+- active identity resolution;
+- token-consumption conflict semantics;
+- same-token concurrency;
+- external-account and conversation conflicts;
+- revocation and pending-token invalidation;
+- account cleanup and rollback on cleanup failure;
+- application-context recreation against persistent PostgreSQL state;
+- real Flyway V4→V5 migration fixtures, including legacy-token invalidation, active-only uniqueness and rollback on ambiguous legacy conversations.
 
-Remaining closure work is to resolve or confirm resolution of PR review findings and obtain CI for the final commit, including the additional tests. Real DEV bot E2E and application restart are no longer pending. Automated migration fixtures do not replace review of data in a different deployment environment. Application-context recreation and V4-to-V5 migration against representative fixtures now have automated coverage (see the testing update below).
+GitHub Actions CI run #30 also succeeded for functional anchor `745a980`. The workflow runs `clean verify` on pull requests targeting `main`.
 
-The branch also retains an earlier unrelated Todo persistence-package spelling/format change; this work does not expand it.
+## Real Telegram DEV E2E evidence
 
-## Verification result — 2026-09-09
+The BM-03 flow was manually verified against the real development bot `@BlueMemoAppDevBot`, the local BlueMemo API and PostgreSQL.
 
-- Focused UserServiceTest + ChannelLinkIntegrationTest: 25 tests, 0 failures/errors/skips.
-- `mvnw.cmd --batch-mode --no-transfer-progress clean verify`: BUILD SUCCESS, 103 tests, 0 failures/errors/skips (including 13 dedicated BM-03 integration tests), PostgreSQL 17 via Testcontainers.
-- The first integration attempt could not find Docker; after starting Docker Desktop, both the focused and full runs passed.
-- After the successful run only import ordering/whitespace and documentation were adjusted; no behavioral changes were made.
-- Historical result: no CI run, deployment or real Telegram dev-bot E2E was performed during that review. Those changes were subsequently committed in `9617118`.
+Verified sequence:
 
-## Changes since the previous review — 2026-09-10
+1. `/check-link` before linking reported that Telegram was not linked.
+2. `POST /users/me/link/channel/TELEGRAM` generated a deep link and persisted a hash-only token with `used_at = NULL`, expiry and consent metadata.
+3. Opening the Telegram deep link triggered `/start <token>` and returned `Cuenta vinculada con éxito. ¡Bienvenido!`.
+4. Token `used_at` was populated and an active `channel_accounts` row was created with Telegram external user/chat IDs, `linked_at`, consent metadata and `revoked_at = NULL`.
+5. `/check-link` then reported linked.
+6. `GET /users/me/link/channel/TELEGRAM` returned the association and audit fields.
+7. `DELETE /users/me/unlink/channel/TELEGRAM` returned `204`, preserved the history row and populated `revoked_at`.
+8. `/check-link` immediately reported unlinked after revocation.
+9. A separately generated pending token was verified with `used_at = NULL`; unlink invalidated it by populating `used_at` before it could be used.
+10. A fresh token after revocation successfully relinked Telegram, creating a new active row while preserving the revoked row.
+11. The history endpoint returned the new active row first and the older revoked row second.
+12. The application was stopped and started again; Flyway validated schema version 5 as up to date and the active/revoked association history remained available.
 
-- `9617118` committed consent, revocation/history, resolver, V5, cleanup and the BM-03 tests.
-- `5e19ebc` ignores IntelliJ run configurations.
-- `0217b00`, `de09824` and `657fb60` add/refine the linking-status command and Telegram action adaptation. The implemented command is `/check-link` (the earlier commit title says `/check-list`).
-- TelegramCommands and TelegramActionConverter now belong to the Telegram adapter. IncomingMessage carries a generic IncomingAction; IncomingEventStatus moved to messaging.domain.enums.
-- `/check-link` is private-chat-only and checks channel + sender + conversation through ChannelIdentityResolver. It returns linked/unlinked status without exposing the BlueMemo UUID.
-- ProcessIncomingMessageService now catches processing failures as well as outbound failures and attempts to mark the event FAILED.
-- README documents TELEGRAM_BOT_NAME and now includes `/check-link` usage.
-- At the initial review there were no dedicated assertions for `/check-link` or TelegramActionConverter. These gaps are covered by the subsequent testing update below.
-- The generic check-link response still hardcodes the word Telegram; protocol parsing has moved out of the core, but this presentation detail remains channel-specific.
-- BM-03 remains active. This initial repository review preceded the user-reported real bot/restart evidence recorded below.
+This provides real E2E evidence for generation, Telegram delivery, token consumption, identity resolution, revocation, pending-token invalidation, fresh relinking, retained history and persistence across application restart.
 
-## Verification result — 2026-09-10, HEAD 657fb60
+## PR review status
 
-`mvnw.cmd --batch-mode --no-transfer-progress clean verify` completed with BUILD SUCCESS: 103 tests, zero failures, errors or skips, including PostgreSQL Testcontainers integration coverage. `git diff --check` passed. No production source or tests were modified during this validation; only this snapshot document was refreshed. At that initial review, remote CI and real-bot E2E had not been verified; see the subsequently supplied evidence below.
+The PR review findings addressed in code/documentation include:
 
-## Added BM-03 coverage — 2026-09-10 (uncommitted)
+- documenting required `TELEGRAM_BOT_NAME` configuration;
+- keeping Telegram command parsing inside the Telegram adapter;
+- including reply-generation/link failures in the incoming-event failure lifecycle;
+- fixing the Linux/macOS bot-name environment assignment;
+- refreshing stale Codex project-state documentation.
 
-- TelegramActionConverterTest: 11 parameterized cases for plain/empty/null text, welcome, link tokens with whitespace, complete token payload, help, check-link and unknown commands.
-- ChannelLinkIntegrationTest: 5 additional cases for check-link before/after linking/revocation/fresh linking, duplicate-event protection, no identity/token exposure, sender/conversation consistency and refusal in group/supergroup/channel chats.
-- ChannelLinkRestartTest: closes and recreates three full application contexts against one PostgreSQL database; verifies pending token usability, persistent consumption, active resolution, revoked history and consent timestamps/version. This recreates the application context, not the database server or operating-system process.
-- ChannelLinkMigrationTest: 3 cases start at actual Flyway V4, migrate representative existing data to V5, preserve historical fields without fabricated consent, invalidate legacy tokens, enforce active-only uniqueness, permit re-linking after revocation, and verify rollback when pre-existing conversations conflict.
-- Focused run: 33 cases passed, zero failures/errors/skips. These changes add 20 cases to the previous 103-case suite.
-- Production sources, migrations and approved decisions are unchanged. No commit was created. Real Telegram bot E2E and remote CI are not replaced by these automated tests.
+At the start of this documentation refresh, all earlier code/configuration review threads were resolved/outdated. The only unresolved thread concerned the stale `PROJECT_STATE.md` snapshot itself; this refresh addresses that issue by removing the self-invalidating live-HEAD model and using a functional verification anchor instead.
 
-Final full run: clean verify completed with BUILD SUCCESS, 123 tests, zero failures/errors/skips. git diff --check passed. Test log: bluememo/target/bm03-tests-verify.log (ignored build output).
+## Remaining closure work
 
-## BM-03 — Verification evidence
+BM-03 is functionally implemented and acceptance evidence is present. The remaining release step is procedural:
 
-### Automated verification
+1. verify CI is green for the **current PR HEAD** after any final documentation-only commits;
+2. confirm there are no new unresolved PR review threads;
+3. merge PR #10 into `main`;
+4. after merge, mark BM-03 closed and make BM-04 the active delivery.
 
-- Local Maven verification completed successfully:
-    - `123 tests`
-    - `0 failures`
-    - `0 errors`
-    - `0 skipped`
-- This latest local result includes the uncommitted additions: 18 ChannelLinkIntegrationTest cases, 3 migration cases, 1 application-context recreation case, and 11 converter cases. The earlier HEAD-only run passed 103 tests; these are different tested revisions.
-- Covered automated cases include:
-    - authenticated link generation;
-    - explicit consent;
-    - hash-only token persistence;
-    - 10-minute expiration;
-    - invalid / expired / already-used / replaced tokens;
-    - private-chat-only linking;
-    - webhook idempotency;
-    - ownership isolation;
-    - active identity resolution;
-    - revocation and relinking;
-    - same-token concurrency;
-    - external-account ownership conflicts;
-    - conversation conflicts;
-    - account cleanup;
-    - transaction rollback when cleanup fails.
-- Per the user-supplied project context, PR #10 CI completed successfully for commit `0217b008aa5aa2a483c8afe302b1513efd8660c6`.
-- The same user-supplied record identifies GitHub Actions run #27 with `conclusion: success`. This update did not independently query that run. It predates current HEAD and the additional uncommitted tests.
-
-### Real Telegram DEV E2E verification
-
-The user reports manually testing the BM-03 linking flow against the real Telegram development bot (`BluememoDev` / `@BlueMemoAppDevBot`) and the local BlueMemo API/PostgreSQL database.
-
-The tested commit and exact execution time were not specified in the supplied manual record. The following sequence is retained as user-reported DEV evidence:
-
-1. Before linking:
-    - `/check-link` returned that the Telegram account was not linked.
-    - `GET /users/me/link/channel/TELEGRAM` returned no active/history entry initially.
-
-2. Link generation:
-    - `POST /users/me/link/channel/TELEGRAM` successfully generated a Telegram deep link.
-    - A `channel_link_tokens` row was persisted.
-    - The persisted value was a hash, not the raw token.
-    - `used_at` was initially `NULL`.
-    - `expires_at`, `consented_at` and `consent_version = 1` were persisted.
-
-3. Telegram link completion:
-    - Opening the generated link triggered `/start <token>` in the real Telegram bot.
-    - The bot returned `Cuenta vinculada con éxito. ¡Bienvenido!`.
-    - `channel_link_tokens.used_at` was populated after successful consumption.
-    - A new active `channel_accounts` row was persisted with:
-        - `channel_type = TELEGRAM`;
-        - `external_user_id`;
-        - `external_chat_id`;
-        - `linked_at`;
-        - `revoked_at = NULL`;
-        - `consented_at`;
-        - `consent_version = 1`.
-    - `/check-link` then returned that the Telegram account was linked.
-
-4. Link inspection:
-    - `GET /users/me/link/channel/TELEGRAM` returned the persisted association and consent/audit fields.
-
-5. Revocation:
-    - `DELETE /users/me/unlink/channel/TELEGRAM` returned `204 No Content`.
-    - The existing `channel_accounts` row was preserved instead of deleted.
-    - `revoked_at` was populated.
-    - `/check-link` immediately returned that the Telegram account was no longer linked.
-    - The revoked association therefore stopped resolving as an active identity.
-
-6. Pending-token invalidation:
-    - A new link token was generated while unlinked.
-    - Before use, its `used_at` value was `NULL`.
-    - Unlink/revocation was executed before consuming it.
-    - The pending token was invalidated and `used_at` was populated.
-    - This confirms that a previously issued pending token cannot bypass revocation and restore the association.
-
-7. Fresh relinking:
-    - A new token was generated after revocation.
-    - `/start <new token>` successfully linked the Telegram account again.
-    - `/check-link` returned linked.
-    - A second `channel_accounts` row was created as active.
-    - The previous row remained preserved with `revoked_at != NULL`.
-    - This verifies retained link/revocation history and active-only uniqueness.
-
-8. Link history:
-    - `GET /users/me/link/channel/TELEGRAM` returned both associations:
-        - newest association active (`revokedAt = null`);
-        - previous association revoked (`revokedAt != null`).
-    - Results were ordered by `linkedAt` descending.
-
-9. Persistence after restart:
-    - The BlueMemo application was stopped and started again.
-    - Flyway successfully validated 5 migrations.
-    - Database schema reported version `5` and `Schema is up to date`.
-    - After restart, `GET /users/me/link/channel/TELEGRAM` still returned both the active and revoked associations.
-    - This confirms persistence of BM-03 identity state across application restart.
-
-### Current verification conclusion
-
-BM-03 core functionality has been verified through:
-- automated unit/integration tests;
-- PostgreSQL/Testcontainers;
-- local full Maven verification;
-- real Telegram DEV E2E;
-- link generation and consumption;
-- identity resolution;
-- revocation;
-- pending-token invalidation;
-- fresh relinking;
-- retained history;
-- application restart/persistence;
-- successful PR CI reported for 0217b00 (not the final HEAD).
-
-These successful tests do not supersede unresolved PR review findings. Architectural/reliability review comments should still be addressed and CI rerun against the final PR HEAD before merge.
+No additional BM-03 feature work is currently required by the approved roadmap or acceptance evidence.
