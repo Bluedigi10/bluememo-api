@@ -40,7 +40,7 @@
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-validation</artifactId>
 		</dependency>
-		
+
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-webmvc</artifactId>
@@ -120,7 +120,7 @@
 		    <groupId>org.springframework.boot</groupId>
 		    <artifactId>spring-boot-starter-flyway</artifactId>
 		</dependency>
-		
+
 		<dependency>
 		    <groupId>org.flywaydb</groupId>
 		    <artifactId>flyway-database-postgresql</artifactId>
@@ -151,7 +151,7 @@
 		    <artifactId>testcontainers-junit-jupiter</artifactId>
 		    <scope>test</scope>
 		</dependency>
-		
+
 	</dependencies>
 
 	<build>
@@ -172,7 +172,7 @@
         	        </execution>
         	        <execution>
         	            <id>report</id>
-        	            <phase>test</phase>
+        	            <phase>verify</phase>
         	            <goals>
         	                <goal>report</goal>
         	            </goals>
@@ -181,5 +181,53 @@
         	</plugin>
 		</plugins>
 	</build>
+
+	<profiles>
+	    <profile>
+	        <id>coverage-gate</id>
+
+	        <build>
+	            <plugins>
+	                <plugin>
+	                    <groupId>org.jacoco</groupId>
+	                    <artifactId>jacoco-maven-plugin</artifactId>
+
+	                    <executions>
+	                        <execution>
+	                            <id>coverage-check</id>
+	                            <phase>verify</phase>
+
+	                            <goals>
+	                                <goal>check</goal>
+	                            </goals>
+
+	                            <configuration>
+	                                <rules>
+	                                    <rule>
+	                                        <element>BUNDLE</element>
+
+	                                        <limits>
+	                                            <limit>
+	                                                <counter>LINE</counter>
+	                                                <value>COVEREDRATIO</value>
+	                                                <minimum>0.85</minimum>
+	                                            </limit>
+
+	                                            <limit>
+	                                                <counter>BRANCH</counter>
+	                                                <value>COVEREDRATIO</value>
+	                                                <minimum>0.80</minimum>
+	                                            </limit>
+	                                        </limits>
+	                                    </rule>
+	                                </rules>
+	                            </configuration>
+	                        </execution>
+	                    </executions>
+	                </plugin>
+	            </plugins>
+	        </build>
+	    </profile>
+	</profiles>
 
 </project>

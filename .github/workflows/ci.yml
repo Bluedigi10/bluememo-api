@@ -2,8 +2,6 @@ name: CI
 
 on:
   push:
-    branches:
-      - main
   pull_request:
     branches:
       - main
@@ -42,8 +40,20 @@ jobs:
             bluememo/pom.xml
             bluememo/.mvn/wrapper/maven-wrapper.properties
 
-      - name: Build and run tests
+      # PUSH
+      - name: Build, test and analyze coverage
+        if: github.event_name == 'push'
         run: ./mvnw --batch-mode --no-transfer-progress clean verify
+
+      # PR
+      - name: Build, test and enforce coverage
+        if: github.event_name == 'pull_request'
+        run: >
+          ./mvnw
+          --batch-mode
+          --no-transfer-progress
+          clean verify
+          -Pcoverage-gate
 
       - name: Upload CI results
         if: always()
