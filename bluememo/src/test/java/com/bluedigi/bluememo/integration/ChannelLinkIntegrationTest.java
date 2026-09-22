@@ -10,6 +10,7 @@ import com.bluedigi.bluememo.identity.infrastructure.persistence.entity.UserEnti
 import com.bluedigi.bluememo.identity.infrastructure.persistence.repository.UserJpaRepository;
 import com.bluedigi.bluememo.identity.infrastructure.web.request.CreateChannelLinkToken;
 import com.bluedigi.bluememo.identity.infrastructure.web.request.DeleteUserRequest;
+import com.bluedigi.bluememo.messaging.application.service.SendMessageRouter;
 import com.bluedigi.bluememo.testsupport.IntegrationTest;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -22,7 +23,6 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.boot.test.system.CapturedOutput;
 import org.springframework.boot.test.system.OutputCaptureExtension;
 import org.junit.jupiter.api.extension.ExtendWith;
-import com.bluedigi.bluememo.messaging.application.port.out.SendMessagePort;
 import com.bluedigi.bluememo.messaging.domain.OutgoingMessage;
 import org.mockito.ArgumentCaptor;
 
@@ -57,7 +57,7 @@ class ChannelLinkIntegrationTest {
     @Autowired JdbcTemplate jdbc;
     @Autowired MockMvc mvc;
     @Autowired JwtService jwt;
-    @MockitoBean SendMessagePort sender;
+    @MockitoBean SendMessageRouter sender;
 
     @BeforeEach
     void clean() {

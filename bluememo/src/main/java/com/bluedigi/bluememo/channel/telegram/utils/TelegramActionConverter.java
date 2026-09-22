@@ -21,10 +21,10 @@ public class TelegramActionConverter {
             case START -> validateStart(instruction);
             case CHECK_LINK -> IncomingAction.CHECK_CHANNEL_LINK;
             case HELP -> IncomingAction.HELP;
-            default -> IncomingAction.UNKNOWN_COMMAND;
+            case TOOL -> IncomingAction.TOOL;
         };
 
-        if (instruction != null && !instruction.isBlank()) {
+        if (instruction != null && !instruction.isBlank() && !action.equals(IncomingAction.TOOL)) {
             text = instruction;
         }
 

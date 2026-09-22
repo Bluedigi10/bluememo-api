@@ -1,8 +1,9 @@
 package com.bluedigi.bluememo.todo.application.service;
 
 import com.bluedigi.bluememo.identity.domain.repository.UserRepository;
+import com.bluedigi.bluememo.todo.domain.enums.TodoSortField;
+import com.bluedigi.bluememo.todo.domain.enums.TodoStatus;
 import com.bluedigi.bluememo.todo.domain.model.Todo;
-import com.bluedigi.bluememo.todo.domain.model.TodoStatus;
 import com.bluedigi.bluememo.todo.domain.repository.TodoRepository;
 import com.bluedigi.bluememo.todo.infrastructure.persistence.mapper.TodoMapper;
 import com.bluedigi.bluememo.todo.infrastructure.web.request.CreateTodoRequest;
@@ -16,13 +17,13 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.time.Instant;
-import java.util.Date;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -68,13 +69,12 @@ class TodoServiceTest {
         UUID userId = UUID.randomUUID();
         CreateTodoRequest request = createTodoRequest();
         Todo todoSaved = saveTodo(userId);
-        String userIdString = userId.toString();
 
         when(userRepository.existsById(userId)).thenReturn(true);
         when(todoRepository.existByUserIdAndTitle(userId, TITLE)).thenReturn(false);
         when(todoRepository.saveTodo(any(Todo.class), eq(userId))).thenReturn(todoSaved);
 
-        TodoResponse response = todoService.createTodo(userIdString, request);
+        TodoResponse response = todoService.createTodo(userId, request);
         ArgumentCaptor<Todo> todoCaptor = ArgumentCaptor.forClass(Todo.class);
         verify(todoRepository).saveTodo(todoCaptor.capture(), eq(userId));
         Todo todoSentToRepository = todoCaptor.getValue();
@@ -97,7 +97,6 @@ class TodoServiceTest {
     @Test
     void createTodoErrorTodoAlreadyExists() {
         UUID userId = UUID.randomUUID();
-        String userIdString = userId.toString();
         CreateTodoRequest request = createTodoRequest();
 
         when(userRepository.existsById(userId)).thenReturn(true);
@@ -105,7 +104,7 @@ class TodoServiceTest {
 
         ResponseStatusException exception = assertThrows(
                 ResponseStatusException.class,
-                () -> todoService.createTodo(userIdString, request)
+                () -> todoService.createTodo(userId, request)
         );
 
         assertStatusException(exception, HttpStatus.CONFLICT, "Todo already exist");
@@ -116,14 +115,13 @@ class TodoServiceTest {
     @Test
     void createTodoErrorTodoUserNotFound() {
         UUID userId = UUID.randomUUID();
-        String userIdString = userId.toString();
         CreateTodoRequest request = createTodoRequest();
 
         when(userRepository.existsById(userId)).thenReturn(false);
 
         ResponseStatusException exception = assertThrows(
                 ResponseStatusException.class,
-                () -> todoService.createTodo(userIdString, request)
+                () -> todoService.createTodo(userId, request)
         );
 
         assertStatusException(exception, HttpStatus.NOT_FOUND, "User not found");
@@ -134,7 +132,6 @@ class TodoServiceTest {
     @Test
     void getTodosSuccess() {
         UUID userId = UUID.randomUUID();
-        String userIdString = userId.toString();
         Todo todo = createTodo(UUID.randomUUID(), userId, TITLE, DESCRIPTION);
         Page<Todo> repositoryPage = new PageImpl<>(List.of(todo));
 
@@ -142,13 +139,20 @@ class TodoServiceTest {
         when(todoRepository.getTodosByUserId(eq(userId), eq("PENDING"), any(Pageable.class)))
                 .thenReturn(repositoryPage);
 
+        Sort.Direction sortDirection = Sort.Direction.fromString("asc");
+        TodoSortField sortField = TodoSortField.fromValue("updatedAt");
+
+        Pageable page = PageRequest.of(
+            2,
+            5,
+            sortDirection,
+            sortField.getProperty()
+        );
+
         Page<TodoResponse> result = todoService.getTodos(
-                userIdString,
+                userId,
                 "PENDING",
-                "updatedAt",
-                "asc",
-                2,
-                5
+                page
         );
 
         ArgumentCaptor<Pageable> pageableCaptor = ArgumentCaptor.forClass(Pageable.class);
@@ -170,13 +174,22 @@ class TodoServiceTest {
     @Test
     void getTodosErrorUserNotFound() {
         UUID userId = UUID.randomUUID();
-        String userIdString = userId.toString();
 
         when(userRepository.existsById(userId)).thenReturn(false);
 
+        Sort.Direction sortDirection = Sort.Direction.fromString("desc");
+        TodoSortField sortField = TodoSortField.fromValue("createdAt");
+
+        Pageable pageable = PageRequest.of(
+            0,
+            10,
+            sortDirection,
+            sortField.getProperty()
+        );
+
         ResponseStatusException exception = assertThrows(
                 ResponseStatusException.class,
-                () -> todoService.getTodos(userIdString, null, "createdAt", "desc", 0, 10)
+                () -> todoService.getTodos(userId, null, pageable)
         );
 
         assertStatusException(exception, HttpStatus.NOT_FOUND, "User not found");
@@ -184,47 +197,15 @@ class TodoServiceTest {
     }
 
     @Test
-    void getTodosErrorInvalidSortField() {
-        UUID userId = UUID.randomUUID();
-        String userIdString = userId.toString();
-
-        when(userRepository.existsById(userId)).thenReturn(true);
-
-        ResponseStatusException exception = assertThrows(
-                ResponseStatusException.class,
-                () -> todoService.getTodos(userIdString, null, "invalid", "desc", 0, 10)
-        );
-
-        assertStatusException(exception, HttpStatus.BAD_REQUEST, "Invalid sort field: invalid");
-        verifyNoInteractions(todoRepository);
-    }
-
-    @Test
-    void getTodosErrorDirectionInvalid() {
-        UUID userId = UUID.randomUUID();
-        String userIdString = userId.toString();
-
-        when(userRepository.existsById(userId)).thenReturn(true);
-
-        assertThrows(
-                IllegalArgumentException.class,
-                () -> todoService.getTodos(userIdString, null, "createdAt", "sideways", 0, 10)
-        );
-
-        verifyNoInteractions(todoRepository);
-    }
-
-    @Test
     void getTodoByIdSuccess() {
         UUID userId = UUID.randomUUID();
         UUID todoId = UUID.randomUUID();
-        String userIdString = userId.toString();
         Todo todo = createTodo(todoId, userId, TITLE, DESCRIPTION);
 
         mockExistingUserAndOwnedTodo(userId, todoId);
         when(todoRepository.getById(todoId)).thenReturn(Optional.of(todo));
 
-        TodoResponse response = todoService.getTodo(userIdString, todoId.toString());
+        TodoResponse response = todoService.getTodo(userId, todoId);
 
         assertTodoResponse(response, todo);
         verify(todoRepository).getById(todoId);
@@ -234,14 +215,12 @@ class TodoServiceTest {
     void getTodoByIdErrorUserNotFound() {
         UUID userId = UUID.randomUUID();
         UUID todoId = UUID.randomUUID();
-        String todoString = todoId.toString();
-        String userIdString = userId.toString();
 
         when(userRepository.existsById(userId)).thenReturn(false);
 
         ResponseStatusException exception = assertThrows(
                 ResponseStatusException.class,
-                () -> todoService.getTodo(userIdString, todoString)
+                () -> todoService.getTodo(userId, todoId)
         );
 
         assertStatusException(exception, HttpStatus.NOT_FOUND, "User not found");
@@ -252,15 +231,13 @@ class TodoServiceTest {
     void getTodoErrorTodoNotFound() {
         UUID userId = UUID.randomUUID();
         UUID todoId = UUID.randomUUID();
-        String todoString = todoId.toString();
-        String userIdString = userId.toString();
 
         when(userRepository.existsById(userId)).thenReturn(true);
         when(todoRepository.existByUserIdAndTodoId(userId, todoId)).thenReturn(false);
 
         ResponseStatusException exception = assertThrows(
                 ResponseStatusException.class,
-                () -> todoService.getTodo(userIdString, todoString)
+                () -> todoService.getTodo(userId, todoId)
         );
 
         assertStatusException(exception, HttpStatus.NOT_FOUND, "Todo not found");
@@ -271,15 +248,13 @@ class TodoServiceTest {
     void getTodoByIdErrorGetEmptyTodo() {
         UUID userId = UUID.randomUUID();
         UUID todoId = UUID.randomUUID();
-        String todoString = todoId.toString();
-        String userIdString = userId.toString();
 
         mockExistingUserAndOwnedTodo(userId, todoId);
         when(todoRepository.getById(todoId)).thenReturn(Optional.empty());
 
         ResponseStatusException exception = assertThrows(
                 ResponseStatusException.class,
-                () -> todoService.getTodo(userIdString, todoString)
+                () -> todoService.getTodo(userId, todoId)
         );
 
         assertStatusException(exception, HttpStatus.NOT_FOUND, "Todo not found");
@@ -289,10 +264,8 @@ class TodoServiceTest {
     void updateTodoSuccess() {
         UUID userId = UUID.randomUUID();
         UUID todoId = UUID.randomUUID();
-        String todoString = todoId.toString();
-        String userIdString = userId.toString();
         Todo existingTodo = createTodo(todoId, userId, "OLD TITLE", "OLD DESCRIPTION");
-        UpdateTodoRequest request = new UpdateTodoRequest("  " + TITLE + "  ", DESCRIPTION);
+        UpdateTodoRequest request = new UpdateTodoRequest(null, "  " + TITLE + "  ", DESCRIPTION);
 
         mockExistingUserAndOwnedTodo(userId, todoId);
         when(todoRepository.existByUserIdAndTitleAndTodoIdNot(userId, TITLE, todoId)).thenReturn(false);
@@ -300,7 +273,7 @@ class TodoServiceTest {
         when(todoRepository.updateTodo(any(Todo.class)))
                 .thenAnswer(invocation -> invocation.getArgument(0));
 
-        TodoResponse response = todoService.updateTodo(userIdString, todoString, request);
+        TodoResponse response = todoService.updateTodo(userId, todoId, request);
 
         ArgumentCaptor<Todo> todoCaptor = ArgumentCaptor.forClass(Todo.class);
         verify(todoRepository).updateTodo(todoCaptor.capture());
@@ -318,16 +291,14 @@ class TodoServiceTest {
     void updateTodoErrorTitleConflict() {
         UUID userId = UUID.randomUUID();
         UUID todoId = UUID.randomUUID();
-        String todoString = todoId.toString();
-        String userIdString = userId.toString();
-        UpdateTodoRequest request = new UpdateTodoRequest(TITLE, DESCRIPTION);
+        UpdateTodoRequest request = new UpdateTodoRequest(null, TITLE, DESCRIPTION);
 
         mockExistingUserAndOwnedTodo(userId, todoId);
         when(todoRepository.existByUserIdAndTitleAndTodoIdNot(userId, TITLE, todoId)).thenReturn(true);
 
         ResponseStatusException exception = assertThrows(
                 ResponseStatusException.class,
-                () -> todoService.updateTodo(userIdString, todoString, request)
+                () -> todoService.updateTodo(userId, todoId, request)
         );
 
         assertStatusException(exception, HttpStatus.CONFLICT, "Todo title already exist");
@@ -339,16 +310,14 @@ class TodoServiceTest {
     void updateTodoErrorBadRequest() {
         UUID userId = UUID.randomUUID();
         UUID todoId = UUID.randomUUID();
-        String todoString = todoId.toString();
-        String userIdString = userId.toString();
-        UpdateTodoRequest request = new UpdateTodoRequest("   ", "   ");
+        UpdateTodoRequest request = new UpdateTodoRequest(null, "   ", "   ");
 
         mockExistingUserAndOwnedTodo(userId, todoId);
         when(todoRepository.existByUserIdAndTitleAndTodoIdNot(userId, "", todoId)).thenReturn(false);
 
         ResponseStatusException exception = assertThrows(
                 ResponseStatusException.class,
-                () -> todoService.updateTodo(userIdString, todoString, request)
+                () -> todoService.updateTodo(userId, todoId, request)
         );
 
         assertStatusException(exception, HttpStatus.BAD_REQUEST, "Invalid Parameter");
@@ -360,15 +329,13 @@ class TodoServiceTest {
         void updateTodoErrorUserNotFound() {
         UUID userId = UUID.randomUUID();
         UUID todoId = UUID.randomUUID();
-        String todoString = todoId.toString();
-        String userIdString = userId.toString();
-        UpdateTodoRequest request = new UpdateTodoRequest(TITLE, DESCRIPTION);
+        UpdateTodoRequest request = new UpdateTodoRequest(null, TITLE, DESCRIPTION);
 
         when(userRepository.existsById(userId)).thenReturn(false);
 
         ResponseStatusException exception = assertThrows(
                 ResponseStatusException.class,
-                () -> todoService.updateTodo(userIdString, todoString, request)
+                () -> todoService.updateTodo(userId, todoId, request)
         );
 
         assertStatusException(exception, HttpStatus.NOT_FOUND, "User not found");
@@ -379,16 +346,14 @@ class TodoServiceTest {
     void updateTodoErrorTodoNotFound() {
         UUID userId = UUID.randomUUID();
         UUID todoId = UUID.randomUUID();
-        String todoString = todoId.toString();
-        String userIdString = userId.toString();
-        UpdateTodoRequest request = new UpdateTodoRequest(TITLE, DESCRIPTION);
+        UpdateTodoRequest request = new UpdateTodoRequest(null, TITLE, DESCRIPTION);
 
         when(userRepository.existsById(userId)).thenReturn(true);
         when(todoRepository.existByUserIdAndTodoId(userId, todoId)).thenReturn(false);
 
         ResponseStatusException exception = assertThrows(
                 ResponseStatusException.class,
-                () -> todoService.updateTodo(userIdString, todoString, request)
+                () -> todoService.updateTodo(userId, todoId, request)
         );
 
         assertStatusException(exception, HttpStatus.NOT_FOUND, "Todo not found");
@@ -399,9 +364,7 @@ class TodoServiceTest {
     void updateTodoErrorTodoNotFoundAfterValidation() {
         UUID userId = UUID.randomUUID();
         UUID todoId = UUID.randomUUID();
-        String todoString = todoId.toString();
-        String userIdString = userId.toString();
-        UpdateTodoRequest request = new UpdateTodoRequest(TITLE, DESCRIPTION);
+        UpdateTodoRequest request = new UpdateTodoRequest(null, TITLE, DESCRIPTION);
 
         mockExistingUserAndOwnedTodo(userId, todoId);
         when(todoRepository.existByUserIdAndTitleAndTodoIdNot(userId, TITLE, todoId)).thenReturn(false);
@@ -409,7 +372,7 @@ class TodoServiceTest {
 
         ResponseStatusException exception = assertThrows(
                 ResponseStatusException.class,
-                () -> todoService.updateTodo(userIdString, todoString, request)
+                () -> todoService.updateTodo(userId, todoId, request)
         );
 
         assertStatusException(exception, HttpStatus.NOT_FOUND, "Todo not found");
@@ -420,8 +383,6 @@ class TodoServiceTest {
     void updateStatusSuccess() {
         UUID userId = UUID.randomUUID();
         UUID todoId = UUID.randomUUID();
-        String todoString = todoId.toString();
-        String userIdString = userId.toString();
         Todo existingTodo = createTodo(todoId, userId, TITLE, DESCRIPTION);
 
         mockExistingUserAndOwnedTodo(userId, todoId);
@@ -430,8 +391,8 @@ class TodoServiceTest {
                 .thenAnswer(invocation -> invocation.getArgument(0));
 
         TodoResponse response = todoService.updateStatus(
-                userIdString,
-                todoString,
+                userId,
+                todoId,
                 "in progress"
         );
 
@@ -448,16 +409,14 @@ class TodoServiceTest {
     void updateStatusWithSameStatus() {
         UUID userId = UUID.randomUUID();
         UUID todoId = UUID.randomUUID();
-        String todoString = todoId.toString();
-        String userIdString = userId.toString();
         Todo existingTodo = createTodo(todoId, userId, TITLE, DESCRIPTION);
 
         mockExistingUserAndOwnedTodo(userId, todoId);
         when(todoRepository.getById(todoId)).thenReturn(Optional.of(existingTodo));
 
         TodoResponse response = todoService.updateStatus(
-                userIdString,
-                todoString,
+                userId,
+                todoId,
                 "PENDING"
         );
 
@@ -469,8 +428,6 @@ class TodoServiceTest {
     void updateStatusErrorStatusInvalid() {
         UUID userId = UUID.randomUUID();
         UUID todoId = UUID.randomUUID();
-        String todoString = todoId.toString();
-        String userIdString = userId.toString();
         Todo existingTodo = createTodo(todoId, userId, TITLE, DESCRIPTION);
 
         mockExistingUserAndOwnedTodo(userId, todoId);
@@ -478,7 +435,7 @@ class TodoServiceTest {
 
         ResponseStatusException exception = assertThrows(
                 ResponseStatusException.class,
-                () -> todoService.updateStatus(userIdString, todoString, "INVALID")
+                () -> todoService.updateStatus(userId, todoId, "INVALID")
         );
 
         assertStatusException(exception, HttpStatus.BAD_REQUEST, "Invalid status: INVALID");
@@ -489,8 +446,6 @@ class TodoServiceTest {
     void updateStatusErrorStatusNull() {
         UUID userId = UUID.randomUUID();
         UUID todoId = UUID.randomUUID();
-        String todoString = todoId.toString();
-        String userIdString = userId.toString();
         Todo existingTodo = createTodo(todoId, userId, TITLE, DESCRIPTION);
 
         mockExistingUserAndOwnedTodo(userId, todoId);
@@ -498,7 +453,7 @@ class TodoServiceTest {
 
         ResponseStatusException exception = assertThrows(
                 ResponseStatusException.class,
-                () -> todoService.updateStatus(userIdString, todoString, null)
+                () -> todoService.updateStatus(userId, todoId, null)
         );
 
         assertStatusException(exception, HttpStatus.BAD_REQUEST, "Invalid status: null");
@@ -509,14 +464,12 @@ class TodoServiceTest {
     void updateStatusErrorUserNotFound() {
         UUID userId = UUID.randomUUID();
         UUID todoId = UUID.randomUUID();
-        String todoString = todoId.toString();
-        String userIdString = userId.toString();
 
         when(userRepository.existsById(userId)).thenReturn(false);
 
         ResponseStatusException exception = assertThrows(
                 ResponseStatusException.class,
-                () -> todoService.updateStatus(userIdString, todoString, "DONE")
+                () -> todoService.updateStatus(userId, todoId, "DONE")
         );
 
         assertStatusException(exception, HttpStatus.NOT_FOUND, "User not found");
@@ -527,15 +480,13 @@ class TodoServiceTest {
     void updateStatusErrorTodoNotFound() {
         UUID userId = UUID.randomUUID();
         UUID todoId = UUID.randomUUID();
-        String todoString = todoId.toString();
-        String userIdString = userId.toString();
 
         when(userRepository.existsById(userId)).thenReturn(true);
         when(todoRepository.existByUserIdAndTodoId(userId, todoId)).thenReturn(false);
 
         ResponseStatusException exception = assertThrows(
                 ResponseStatusException.class,
-                () -> todoService.updateStatus(userIdString, todoString, "DONE")
+                () -> todoService.updateStatus(userId, todoId, "DONE")
         );
 
         assertStatusException(exception, HttpStatus.NOT_FOUND, "Todo not found");
@@ -546,15 +497,13 @@ class TodoServiceTest {
     void updateStatusErrorTodoNotFoundAfterValidation() {
         UUID userId = UUID.randomUUID();
         UUID todoId = UUID.randomUUID();
-        String todoString = todoId.toString();
-        String userIdString = userId.toString();
 
         mockExistingUserAndOwnedTodo(userId, todoId);
         when(todoRepository.getById(todoId)).thenReturn(Optional.empty());
 
         ResponseStatusException exception = assertThrows(
                 ResponseStatusException.class,
-                () -> todoService.updateStatus(userIdString, todoString, "DONE")
+                () -> todoService.updateStatus(userId, todoId, "DONE")
         );
 
         assertStatusException(exception, HttpStatus.NOT_FOUND, "Todo not found");
@@ -565,12 +514,10 @@ class TodoServiceTest {
     void deleteTodoSuccess() {
         UUID userId = UUID.randomUUID();
         UUID todoId = UUID.randomUUID();
-        String todoString = todoId.toString();
-        String userIdString = userId.toString();
 
         mockExistingUserAndOwnedTodo(userId, todoId);
 
-        todoService.deleteTodo(userIdString, todoString);
+        todoService.deleteTodo(userId, todoId);
 
         verify(todoRepository).deleteTodo(todoId);
     }
@@ -579,14 +526,12 @@ class TodoServiceTest {
     void deleteTodoErrorUserNotFound() {
         UUID userId = UUID.randomUUID();
         UUID todoId = UUID.randomUUID();
-        String todoString = todoId.toString();
-        String userIdString = userId.toString();
 
         when(userRepository.existsById(userId)).thenReturn(false);
 
         ResponseStatusException exception = assertThrows(
                 ResponseStatusException.class,
-                () -> todoService.deleteTodo(userIdString, todoString)
+                () -> todoService.deleteTodo(userId, todoId)
         );
 
         assertStatusException(exception, HttpStatus.NOT_FOUND, "User not found");
@@ -597,15 +542,13 @@ class TodoServiceTest {
     void deleteTodoErrorTodoNotFound() {
         UUID userId = UUID.randomUUID();
         UUID todoId = UUID.randomUUID();
-        String todoString = todoId.toString();
-        String userIdString = userId.toString();
 
         when(userRepository.existsById(userId)).thenReturn(true);
         when(todoRepository.existByUserIdAndTodoId(userId, todoId)).thenReturn(false);
 
         ResponseStatusException exception = assertThrows(
                 ResponseStatusException.class,
-                () -> todoService.deleteTodo(userIdString, todoString)
+                () -> todoService.deleteTodo(userId, todoId)
         );
 
         assertStatusException(exception, HttpStatus.NOT_FOUND, "Todo not found");
@@ -613,7 +556,7 @@ class TodoServiceTest {
     }
 
     private CreateTodoRequest createTodoRequest() {
-        return new CreateTodoRequest(TITLE, DESCRIPTION);
+        return new CreateTodoRequest(null, TITLE, DESCRIPTION);
     }
 
     private Todo saveTodo(UUID userId) {
@@ -623,8 +566,8 @@ class TodoServiceTest {
                 .title(TITLE)
                 .description(DESCRIPTION)
                 .status(TodoStatus.PENDING)
-                .createdAt(Date.from(NOW))
-                .updatedAt(Date.from(NOW))
+                .createdAt(NOW)
+                .updatedAt(NOW)
                 .build();
     }
 
@@ -640,8 +583,8 @@ class TodoServiceTest {
                 .title(title)
                 .description(description)
                 .status(TodoStatus.PENDING)
-                .createdAt(Date.from(NOW))
-                .updatedAt(Date.from(NOW))
+                .createdAt(NOW)
+                .updatedAt(NOW)
                 .build();
     }
 

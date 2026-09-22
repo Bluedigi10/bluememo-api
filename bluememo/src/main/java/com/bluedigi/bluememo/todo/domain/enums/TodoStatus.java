@@ -1,4 +1,4 @@
-package com.bluedigi.bluememo.todo.domain.model;
+package com.bluedigi.bluememo.todo.domain.enums;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.web.server.ResponseStatusException;

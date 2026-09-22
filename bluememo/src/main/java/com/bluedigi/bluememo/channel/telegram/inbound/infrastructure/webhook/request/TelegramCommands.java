@@ -4,7 +4,7 @@ public enum TelegramCommands {
     START("/start"),
     CHECK_LINK("/check-link"),
     HELP("/help"),
-    UNKNOWN("unknown");
+    TOOL("/");
 
     private final String value;
 
@@ -18,10 +18,10 @@ public enum TelegramCommands {
 
     public static TelegramCommands fromValue(String text) {
         for (TelegramCommands command : TelegramCommands.values()) {
-            if (command.getValue().equals(text) && command != UNKNOWN) {
+            if (command.getValue().equals(text) && command != TOOL) {
                 return command;
             }
         }
-        return UNKNOWN;
+        return TOOL;
     }
 }

@@ -1,4 +1,4 @@
-package com.bluedigi.bluememo.todo.domain.model;
+package com.bluedigi.bluememo.todo.domain.enums;
 
 import lombok.Getter;
 import org.springframework.http.HttpStatus;

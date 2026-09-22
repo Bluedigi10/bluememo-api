@@ -7,7 +7,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 
-import com.bluedigi.bluememo.todo.domain.model.TodoStatus;
+import com.bluedigi.bluememo.todo.domain.enums.TodoStatus;
 import com.bluedigi.bluememo.todo.infrastructure.persistence.entity.TodoEntity;
 
 import org.springframework.data.jpa.repository.Query;

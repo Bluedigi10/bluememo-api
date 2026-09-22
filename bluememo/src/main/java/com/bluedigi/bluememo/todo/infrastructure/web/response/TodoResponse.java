@@ -1,16 +1,16 @@
 package com.bluedigi.bluememo.todo.infrastructure.web.response;
 
-import java.util.Date;
+import java.time.Instant;
 import java.util.UUID;
 
-import com.bluedigi.bluememo.todo.domain.model.TodoStatus;
+import com.bluedigi.bluememo.todo.domain.enums.TodoStatus;
 
 public record TodoResponse(
     UUID todoId,
     String title,
     String description,
     TodoStatus status,
-    Date createdAt,
-    Date updatedAt
+    Instant createdAt,
+    Instant updatedAt
 ) {
 }

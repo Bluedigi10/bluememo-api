@@ -1,7 +1,9 @@
 package com.bluedigi.bluememo.todo.domain.model;
 
-import java.util.Date;
+import java.time.Instant;
 import java.util.UUID;
+
+import com.bluedigi.bluememo.todo.domain.enums.TodoStatus;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -18,6 +20,6 @@ public class Todo {
     private String title;
     private String description;
     private TodoStatus status;
-    private Date createdAt;
-    private Date updatedAt;
+    private Instant createdAt;
+    private Instant updatedAt;
 }

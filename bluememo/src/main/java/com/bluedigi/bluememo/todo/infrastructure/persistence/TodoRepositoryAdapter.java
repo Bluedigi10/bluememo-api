@@ -12,8 +12,8 @@ import org.springframework.web.server.ResponseStatusException;
 
 import com.bluedigi.bluememo.identity.infrastructure.persistence.entity.UserEntity;
 import com.bluedigi.bluememo.identity.infrastructure.persistence.repository.UserJpaRepository;
+import com.bluedigi.bluememo.todo.domain.enums.TodoStatus;
 import com.bluedigi.bluememo.todo.domain.model.Todo;
-import com.bluedigi.bluememo.todo.domain.model.TodoStatus;
 import com.bluedigi.bluememo.todo.domain.repository.TodoRepository;
 import com.bluedigi.bluememo.todo.infrastructure.persistence.entity.TodoEntity;
 import com.bluedigi.bluememo.todo.infrastructure.persistence.mapper.TodoMapper;

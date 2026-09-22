@@ -30,7 +30,8 @@ class TelegramActionConverterTest {
                 Arguments.of("/start first second", IncomingAction.LINK_CHANNEL, "first second"),
                 Arguments.of("/check-link", IncomingAction.CHECK_CHANNEL_LINK, "/check-link"),
                 Arguments.of("/help", IncomingAction.HELP, "/help"),
-                Arguments.of("/unrecognized", IncomingAction.UNKNOWN_COMMAND, "/unrecognized")
+                Arguments.of("/", IncomingAction.TOOL, "/"),
+                Arguments.of("/todo create comprar leche", IncomingAction.TOOL, "/todo create comprar leche")
         );
     }
 }

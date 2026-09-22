@@ -1,7 +1,6 @@
 package com.bluedigi.bluememo.messaging.application.service;
 
 import com.bluedigi.bluememo.messaging.application.port.out.IncomingEventRepository;
-import com.bluedigi.bluememo.messaging.application.port.out.SendMessagePort;
 import com.bluedigi.bluememo.messaging.domain.OutgoingMessage;
 
 import lombok.RequiredArgsConstructor;
@@ -21,10 +20,11 @@ import com.bluedigi.bluememo.messaging.domain.IncomingMessage;
 @RequiredArgsConstructor
 @Service
 public class ProcessIncomingMessageService implements ProcessIncomingMessageUseCase {
-    private final SendMessagePort sender;
+    private final SendMessageRouter sender;
     private final IncomingEventRepository eventRepository;
     private final IncomingMessageMapper mapper;
     private final ChannelAccountService channelAccountService;
+    private final ToolMessageService toolMessageService;
 
     @Override
     public void process(IncomingMessage message) {
@@ -74,12 +74,13 @@ public class ProcessIncomingMessageService implements ProcessIncomingMessageUseC
             case WELCOME -> sendWelcome();
             case LINK_CHANNEL -> linkAccount(message);
             case CHECK_CHANNEL_LINK -> checkLink(message);
-            case HELP -> "Estos son los comandos disponibles...";
-            case UNKNOWN_COMMAND -> "Comando no reconocido";
+            case HELP -> sendHelp();
+            case TOOL -> executeTool(message);
         };
     }
 
     private String sendMessage(String message) {
+        //AQUÍ SE VE A IMPLEMENTAR LLM
         return "Recibí " + message;
     }
 
@@ -111,5 +112,15 @@ public class ProcessIncomingMessageService implements ProcessIncomingMessageUseC
         return linked
                 ? "Tu cuenta de %s está vinculada a BlueMemo.".formatted(message.channelType().getLabel())
                 : "Tu cuenta de %s no está vinculada a BlueMemo.".formatted(message.channelType().getLabel());
+    }
+
+    private String sendHelp() {
+        //SE REGRESARÁ UNA LISTA CON LOS TOOLS DISPONIBLES
+        return "Estos son los comandos disponibles...";
+    }
+
+    private String executeTool(IncomingMessage message) {
+        //AQUÍ SE EJECUTARÁN ACCIONES (CREAR TAREAS, CALENDARIO, SPOTIFY, ETC.
+        return toolMessageService.execute(message);
     }
 }

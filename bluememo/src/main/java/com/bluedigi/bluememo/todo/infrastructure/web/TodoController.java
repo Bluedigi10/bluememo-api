@@ -3,6 +3,7 @@ package com.bluedigi.bluememo.todo.infrastructure.web;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.bluedigi.bluememo.todo.application.service.TodoService;
+import com.bluedigi.bluememo.todo.domain.enums.TodoSortField;
 import com.bluedigi.bluememo.todo.infrastructure.web.request.CreateTodoRequest;
 import com.bluedigi.bluememo.todo.infrastructure.web.request.UpdateTodoRequest;
 import com.bluedigi.bluememo.todo.infrastructure.web.response.PageResponse;
@@ -10,7 +11,12 @@ import com.bluedigi.bluememo.todo.infrastructure.web.response.TodoResponse;
 
 import jakarta.validation.Valid;
 
+import java.util.UUID;
+
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -37,13 +43,14 @@ public class TodoController {
     public TodoController(TodoService service) {
         this.service = service;
     }
-    
+
     @PostMapping
     public ResponseEntity<TodoResponse> createTodo(
-        @AuthenticationPrincipal UserDetails loggedUser, 
+        @AuthenticationPrincipal UserDetails loggedUser,
         @Valid @RequestBody CreateTodoRequest createTodoRequest
     ) {
-        return ResponseEntity.status(HttpStatus.CREATED).body(service.createTodo(loggedUser.getUsername(), createTodoRequest));
+        UUID userId = UUID.fromString(loggedUser.getUsername());
+        return ResponseEntity.status(HttpStatus.CREATED).body(service.createTodo(userId, createTodoRequest));
     }
 
     @GetMapping
@@ -55,46 +62,64 @@ public class TodoController {
         @RequestParam(defaultValue = "0") int page,
         @RequestParam(defaultValue = "10") int size
     ) {
-        Page<TodoResponse> response = service.getTodos(loggedUser.getUsername(), status, sortBy, direction, page, size);
+        UUID userId = UUID.fromString(loggedUser.getUsername());
+
+        Sort.Direction sortDirection = Sort.Direction.fromString(direction);
+        TodoSortField sortField = TodoSortField.fromValue(sortBy);
+
+        Pageable pageable = PageRequest.of(
+            page,
+            size,
+            sortDirection,
+            sortField.getProperty()
+        );
+        Page<TodoResponse> response = service.getTodos(userId, status, pageable);
         return ResponseEntity.ok(PageResponse.from(response));
     }
 
-    @GetMapping("/{todoId}")
+    @GetMapping("/{todoIdString}")
     public ResponseEntity<TodoResponse> getTodo(
         @AuthenticationPrincipal UserDetails loggedUser,
-        @PathVariable String todoId
+        @PathVariable String todoIdString
     ) {
-        return ResponseEntity.ok(service.getTodo(loggedUser.getUsername(), todoId));
+        UUID userId = UUID.fromString(loggedUser.getUsername());
+        UUID todoId = UUID.fromString(todoIdString);
+        return ResponseEntity.ok(service.getTodo(userId, todoId));
     }
-    
 
-    @PutMapping("/{todoId}")
+
+    @PutMapping("/{todoIdString}")
     public ResponseEntity<TodoResponse> updateTodo(
         @AuthenticationPrincipal UserDetails loggedUser,
-        @PathVariable String todoId, 
+        @PathVariable String todoIdString,
         @Valid @RequestBody UpdateTodoRequest request
     ) {
-        return ResponseEntity.ok(service.updateTodo(loggedUser.getUsername(), todoId, request));
+        UUID userId = UUID.fromString(loggedUser.getUsername());
+        UUID todoId = UUID.fromString(todoIdString);
+        return ResponseEntity.ok(service.updateTodo(userId, todoId, request));
     }
 
-    @PatchMapping("/{todoId}")
+    @PatchMapping("/{todoIdString}")
     public ResponseEntity<TodoResponse> updateStatus(
         @AuthenticationPrincipal UserDetails loggedUser,
-        @PathVariable String todoId,
+        @PathVariable String todoIdString,
         @RequestParam String status
     ) {
-        return ResponseEntity.ok(service.updateStatus(loggedUser.getUsername(), todoId, status));
+        UUID userId = UUID.fromString(loggedUser.getUsername());
+        UUID todoId = UUID.fromString(todoIdString);
+        return ResponseEntity.ok(service.updateStatus(userId, todoId, status));
     }
-    
-    @DeleteMapping("/{todoId}")
+
+    @DeleteMapping("/{todoIdString}")
     public ResponseEntity<Void> deleteTodo (
         @AuthenticationPrincipal UserDetails loggedUser,
-        @PathVariable String todoId
+        @PathVariable String todoIdString
     ) {
-
-        service.deleteTodo(loggedUser.getUsername(), todoId);
+        UUID userId = UUID.fromString(loggedUser.getUsername());
+        UUID todoId = UUID.fromString(todoIdString);
+        service.deleteTodo(userId, todoId);
 
         return ResponseEntity.noContent().build();
     }
-    
+
 }

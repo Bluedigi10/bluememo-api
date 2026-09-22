@@ -4,7 +4,6 @@ import com.bluedigi.bluememo.common.domain.ChannelType;
 import com.bluedigi.bluememo.common.exception.StatusCodeError;
 import com.bluedigi.bluememo.messaging.application.exception.MessageChannelNotConfiguredException;
 import com.bluedigi.bluememo.messaging.application.port.out.ChannelMessageSender;
-import com.bluedigi.bluememo.messaging.application.port.out.SendMessagePort;
 import com.bluedigi.bluememo.messaging.domain.OutgoingMessage;
 import org.springframework.stereotype.Component;
 
@@ -14,7 +13,7 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 
 @Component
-public class SendMessageRouter implements SendMessagePort {
+public class SendMessageRouter {
 
     private final Map<ChannelType, ChannelMessageSender> senders;
 
@@ -26,7 +25,6 @@ public class SendMessageRouter implements SendMessagePort {
                 ));
     }
 
-    @Override
     public void send(OutgoingMessage message) {
 
         ChannelMessageSender sender = senders.get(message.channelType());

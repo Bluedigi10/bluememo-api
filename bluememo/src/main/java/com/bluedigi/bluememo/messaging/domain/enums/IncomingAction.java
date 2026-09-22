@@ -5,6 +5,6 @@ public enum IncomingAction {
     WELCOME,
     LINK_CHANNEL,
     CHECK_CHANNEL_LINK,
-    HELP,
-    UNKNOWN_COMMAND
+    TOOL,
+    HELP
 }

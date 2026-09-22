@@ -1,8 +1,5 @@
 package com.bluedigi.bluememo.todo.infrastructure.persistence.mapper;
 
-import java.time.ZoneId;
-import java.util.Date;
-
 import org.springframework.stereotype.Component;
 
 import com.bluedigi.bluememo.identity.infrastructure.persistence.entity.UserEntity;
@@ -13,9 +10,6 @@ import com.bluedigi.bluememo.todo.infrastructure.web.response.TodoResponse;
 
 @Component
 public class TodoMapper {
-
-    private final ZoneId MEXICO_CITY = ZoneId.of("America/Mexico_City");
-
     public Todo createTodoRequestToTodo(CreateTodoRequest request) {
         Todo model = new Todo();
 
@@ -32,8 +26,8 @@ public class TodoMapper {
             .title(entity.getTitle())
             .description(entity.getDescription())
             .status(entity.getStatus())
-            .createdAt(Date.from(entity.getCreatedAt().atZone(MEXICO_CITY).toInstant()))
-            .updatedAt(Date.from(entity.getUpdatedAt().atZone(MEXICO_CITY).toInstant()))
+            .createdAt(entity.getCreatedAt())
+            .updatedAt(entity.getUpdatedAt())
             .build();
     }
 
