@@ -109,4 +109,9 @@ public class TodoRepositoryAdapter implements TodoRepository{
                 .findAllByUser_IdAndStatus(userId, todoStatus, pageable)
                 .map(todoMapper::todoEntityToTodo);
     }
+
+    @Override
+    public UUID getTodoIdByUserIdAndTitle(UUID userId, String title) {
+        return todoJpaRepository.getTodoIdByUserIdAndTitle(userId, title);
+    }
 }

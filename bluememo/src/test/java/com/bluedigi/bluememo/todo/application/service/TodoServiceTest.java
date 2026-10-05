@@ -8,6 +8,7 @@ import com.bluedigi.bluememo.todo.domain.repository.TodoRepository;
 import com.bluedigi.bluememo.todo.infrastructure.persistence.mapper.TodoMapper;
 import com.bluedigi.bluememo.todo.infrastructure.web.request.CreateTodoRequest;
 import com.bluedigi.bluememo.todo.infrastructure.web.request.UpdateTodoRequest;
+import com.bluedigi.bluememo.todo.infrastructure.web.response.TodoPageResponse;
 import com.bluedigi.bluememo.todo.infrastructure.web.response.TodoResponse;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -149,7 +150,7 @@ class TodoServiceTest {
             sortField.getProperty()
         );
 
-        Page<TodoResponse> result = todoService.getTodos(
+        TodoPageResponse result = todoService.getTodos(
                 userId,
                 "PENDING",
                 page
@@ -161,9 +162,9 @@ class TodoServiceTest {
         Sort.Order updatedAtOrder = pageable.getSort().getOrderFor("updatedAt");
 
         assertAll(
-                () -> assertEquals(1, result.getNumberOfElements()),
-                () -> assertEquals(todo.getTodoId(), result.getContent().get(0).todoId()),
-                () -> assertEquals(TITLE, result.getContent().get(0).title()),
+                () -> assertEquals(1, result.page().numberOfElements()),
+                () -> assertEquals(todo.getTodoId(), result.page().content().get(0).todoId()),
+                () -> assertEquals(TITLE, result.page().content().get(0).title()),
                 () -> assertEquals(2, pageable.getPageNumber()),
                 () -> assertEquals(5, pageable.getPageSize()),
                 () -> assertNotNull(updatedAtOrder),

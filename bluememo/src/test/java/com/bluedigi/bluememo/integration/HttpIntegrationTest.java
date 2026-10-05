@@ -110,9 +110,9 @@ class HttpIntegrationTest {
                         .param("sortBy", "title")
                         .param("direction", "asc"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.content.length()").value(1))
-                .andExpect(jsonPath("$.content[0].todoId").value(todoId))
-                .andExpect(jsonPath("$.totalElements").value(1));
+                .andExpect(jsonPath("$.page.content.length()").value(1))
+                .andExpect(jsonPath("$.page.content[0].todoId").value(todoId))
+                .andExpect(jsonPath("$.page.totalElements").value(1));
 
         mockMvc.perform(put("/todos/{todoId}", todoId)
                         .header("Authorization", bearer(token))

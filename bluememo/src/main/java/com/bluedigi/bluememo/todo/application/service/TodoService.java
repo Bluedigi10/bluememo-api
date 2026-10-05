@@ -2,13 +2,13 @@ package com.bluedigi.bluememo.todo.application.service;
 
 import java.util.UUID;
 
-import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
+import com.bluedigi.bluememo.common.domain.PageResponse;
 import com.bluedigi.bluememo.identity.domain.repository.UserRepository;
 import com.bluedigi.bluememo.todo.domain.enums.TodoStatus;
 import com.bluedigi.bluememo.todo.domain.model.Todo;
@@ -16,6 +16,7 @@ import com.bluedigi.bluememo.todo.domain.repository.TodoRepository;
 import com.bluedigi.bluememo.todo.infrastructure.persistence.mapper.TodoMapper;
 import com.bluedigi.bluememo.todo.infrastructure.web.request.CreateTodoRequest;
 import com.bluedigi.bluememo.todo.infrastructure.web.request.UpdateTodoRequest;
+import com.bluedigi.bluememo.todo.infrastructure.web.response.TodoPageResponse;
 import com.bluedigi.bluememo.todo.infrastructure.web.response.TodoResponse;
 
 @Service
@@ -50,11 +51,11 @@ public class TodoService {
     }
 
     @Transactional(readOnly = true)
-    public Page<TodoResponse> getTodos(UUID userId, String status, Pageable pageable) {
+    public TodoPageResponse getTodos(UUID userId, String status, Pageable pageable) {
 
         validateUserId(userId);
 
-        return todoRepository.getTodosByUserId(userId, status, pageable).map(todoMapper::todoToTodoResponse);
+        return new TodoPageResponse(PageResponse.from(todoRepository.getTodosByUserId(userId, status, pageable).map(todoMapper::todoToTodoResponse)));
     }
 
     @Transactional(readOnly = true)

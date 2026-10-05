@@ -6,14 +6,13 @@ import com.bluedigi.bluememo.todo.application.service.TodoService;
 import com.bluedigi.bluememo.todo.domain.enums.TodoSortField;
 import com.bluedigi.bluememo.todo.infrastructure.web.request.CreateTodoRequest;
 import com.bluedigi.bluememo.todo.infrastructure.web.request.UpdateTodoRequest;
-import com.bluedigi.bluememo.todo.infrastructure.web.response.PageResponse;
+import com.bluedigi.bluememo.todo.infrastructure.web.response.TodoPageResponse;
 import com.bluedigi.bluememo.todo.infrastructure.web.response.TodoResponse;
 
 import jakarta.validation.Valid;
 
 import java.util.UUID;
 
-import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
@@ -54,7 +53,7 @@ public class TodoController {
     }
 
     @GetMapping
-    public ResponseEntity<PageResponse<TodoResponse>> getAllTodos(
+    public ResponseEntity<TodoPageResponse> getAllTodos(
         @AuthenticationPrincipal UserDetails loggedUser,
         @RequestParam(required = false) String status,
         @RequestParam(defaultValue = "createdAt") String sortBy,
@@ -73,8 +72,8 @@ public class TodoController {
             sortDirection,
             sortField.getProperty()
         );
-        Page<TodoResponse> response = service.getTodos(userId, status, pageable);
-        return ResponseEntity.ok(PageResponse.from(response));
+        TodoPageResponse response = service.getTodos(userId, status, pageable);
+        return ResponseEntity.ok(response);
     }
 
     @GetMapping("/{todoIdString}")

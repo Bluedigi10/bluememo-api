@@ -1,4 +1,4 @@
-package com.bluedigi.bluememo.todo.infrastructure.web.response;
+package com.bluedigi.bluememo.common.domain;
 
 import java.util.List;
 

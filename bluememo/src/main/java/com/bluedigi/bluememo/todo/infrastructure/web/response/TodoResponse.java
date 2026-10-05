@@ -12,5 +12,5 @@ public record TodoResponse(
     TodoStatus status,
     Instant createdAt,
     Instant updatedAt
-) {
+) implements TodoToolResponse {
 }

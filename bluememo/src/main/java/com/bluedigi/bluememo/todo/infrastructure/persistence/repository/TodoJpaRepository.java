@@ -17,12 +17,13 @@ public interface TodoJpaRepository extends JpaRepository<TodoEntity, UUID> {
     boolean existsByUser_IdAndTitle(UUID userId, String title);
     boolean existsByUser_IdAndTodoId(UUID userId, UUID todoId);
     boolean existsByUser_IdAndTitleAndTodoIdNot(UUID userId, String title, UUID todoId);
-    Page<TodoEntity> findAllByUser_Id(UUID user_Id, Pageable pageable);
-    Page<TodoEntity> findAllByUser_IdAndStatus(UUID user_Id, TodoStatus status, Pageable pageable);
+    Page<TodoEntity> findAllByUser_Id(UUID userId, Pageable pageable);
+    Page<TodoEntity> findAllByUser_IdAndStatus(UUID userId, TodoStatus status, Pageable pageable);
     @Modifying(
         clearAutomatically = true,
         flushAutomatically = true
     )
     @Query("DELETE FROM TodoEntity t WHERE t.user.id = :userId")
     void deleteAllByUserId(@Param("userId") UUID userId);
+    UUID getTodoIdByUserIdAndTitle(UUID userId, String title);
 }

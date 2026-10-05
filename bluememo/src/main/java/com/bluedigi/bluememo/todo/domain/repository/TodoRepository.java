@@ -18,4 +18,5 @@ public interface TodoRepository {
     boolean existByUserIdAndTitleAndTodoIdNot(UUID userId, String title, UUID todoId);
     Optional<Todo> getById(UUID todoId);
     Page<Todo> getTodosByUserId(UUID userId, String status, Pageable pageable);
+    UUID getTodoIdByUserIdAndTitle(UUID userId, String title);
 }
